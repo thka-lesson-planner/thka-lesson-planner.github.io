@@ -136,22 +136,27 @@ body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
       <label class="f" for="age">Class age: <span class="agepill" id="agel"></span></label>
       <input type="range" id="age" min="1" max="5" step="1" value="3">
       <div class="ticks" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
-      <div class="btns"><button class="btn big" id="go" type="button">Plan it!</button><button class="btn alt" id="mo" type="button">&#128197; Plan the whole month</button><button class="btn alt" id="mh" type="button">&#9999;&#65039; Add by hand</button><button class="btn alt" id="pm" type="button">✨ Polish more with AI</button><button class="btn alt" id="stop" type="button" hidden>Stop</button></div>
+      <div class="btns"><button class="btn big" id="go" type="button">Plan it!</button><button class="btn alt" id="pw" type="button">&#128197; Plan the week</button><button class="btn alt" id="mo" type="button">&#128467;&#65039; Plan the whole month</button><button class="btn alt" id="mh" type="button">&#9999;&#65039; Add by hand</button><button class="btn alt" id="pm" type="button">✨ Make this week more imaginative</button><button class="btn alt" id="stop" type="button" hidden>Stop</button></div>
+      <p class="note inl" id="polrow"><label for="pol">Wand works on: </label><select id="pol" style="width:auto"><option value="wk">This week</option><option value="next">Next week</option><option value="month">The whole month (takes a while)</option></select></p>
+      <p class="note">&#10024; <b>Plan it!</b> and <b>Plan the week</b> imagine brand-new activities from your idea. <b>Plan the whole month</b> fills in instantly from the activity bank, and the wand adds extra imagination whenever you like.</p>
       <div id="msg" aria-live="polite"></div>
     </div><div>
       <label class="f" for="gm">Which month&rsquo;s theme?</label><select id="gm"></select>
       <label class="f" for="gs">Planner row</label><select id="gs"></select>
       <label class="f" for="gd">Which day?</label><select id="gd"></select>
       <label class="f" for="bud">Weekly supply budget ($)</label><input type="text" id="bud" inputmode="numeric" maxlength="4" value="45">
-      <label class="f" for="eng">AI helper <span class="st" id="st"></span></label>
-      <select id="eng"><option value="cpu">Reliable mode: runs on this computer (recommended)</option><option value="gpu">Fast mode: uses the graphics card (strong computers only)</option><option value="bank">No AI: built-in activity bank only</option></select>
-      <p class="note inl" id="cmrow"><label for="cm">Size: </label><select id="cm" style="width:auto"><option value="light">Light (about 0.5 GB, quickest, best for tablets)</option><option value="balanced">Balanced (about 1.1 GB, more creative)</option></select></p>
-      <p class="note inl" id="polrow"><label for="pol">AI polish at a time: </label><select id="pol" style="width:auto"><option value="5">Soonest 5 (quick, best for tablets)</option><option value="10">Soonest 10</option><option value="999">Whole month (slow)</option></select></p>
+      <label class="f">AI helper <span class="st" id="st"></span></label>
       <div class="btns" style="margin-top:6px"><button class="btn alt" id="setup" type="button" hidden>Set up AI helper</button></div>
       <progress id="prog" max="100" value="0" hidden></progress>
       <p class="note" id="dlnote" aria-live="polite"></p>
       <p class="note" id="wnote"></p>
-      <details class="note"><summary>Technical details</summary><div id="tech"></div></details>
+      <details class="note" id="adv"><summary>Advanced &amp; technical details</summary>
+        <label class="f" for="eng">How the AI runs</label>
+        <select id="eng"><option value="cpu">Reliable mode: runs on this device (recommended)</option><option value="gpu">Fast mode: uses the graphics card (strong computers only)</option><option value="bank">No AI: built-in activity bank only</option></select>
+        <p class="note inl" id="cmrow"><label for="cm">AI size: </label><select id="cm" style="width:auto"><option value="auto">Automatic (best for this device)</option><option value="light">Light (about 0.5 GB, quickest)</option><option value="balanced">Balanced (about 1.1 GB, more creative)</option><option value="heavy">Powerful (about 2.5 GB, most creative, strong computers with 8 GB+ memory only)</option></select></p>
+        <p class="note"><label><input type="checkbox" id="auto" style="width:auto;margin-right:6px">Load the AI helper automatically when this page opens</label></p>
+        <div id="tech"></div>
+      </details>
     </div></div>
   </section>
 
@@ -595,7 +600,9 @@ function fbTheme(only){var m=only==="auto"?V.m:+only,p=plan(V.wk),th=(V.m===m&&p
 var WLLAMA_BASE="https://cdn.jsdelivr.net/npm/@wllama/wllama@2.3.7/esm/";
 var CM={
   light:{url:"https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf",mb:491,label:"about 0.5 GB"},
-  balanced:{url:"https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",mb:1120,label:"about 1.1 GB"}};
+  balanced:{url:"https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",mb:1120,label:"about 1.1 GB"},
+  heavy:{url:"https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf",mb:2500,label:"about 2.5 GB",nothink:true}};
+var CMORDER=["light","balanced","heavy"];
 // Fast mode: WebLLM on the graphics card (optional, strong computers only).
 var WEBLLM_URL="https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.83/+esm";
 var WM={id:"Qwen2.5-1.5B-Instruct-q4f16_1-MLC"};
@@ -618,25 +625,36 @@ function friendly(e){var m=String(e&&e.message?e.message:e||"");
   return m.replace(/\s+/g," ").slice(0,120)||"unknown problem";}
 function isTablet(){var u=navigator.userAgent||"";return /iPad|Android|Tablet/i.test(u)||(navigator.maxTouchPoints>1&&/Mac/i.test(navigator.platform||""));}
 function lowMem(){return !!(navigator.deviceMemory&&navigator.deviceMemory<=4);}
-function engReady(){var e=$("eng").value;return e==="cpu"?(AI.active==="cpu"&&AI.cpuKey===$("cm").value&&!!AI.cpu):e==="gpu"?(AI.active==="gpu"&&!!AI.web):false;}
-function engCached(){var e=$("eng").value;return e==="cpu"?read("tka:gguf:"+$("cm").value,false)===true:e==="gpu"?read("tka:wllm:"+WM.id,false)===true:false;}
+// The AI size is picked automatically from what this device can handle. "Powerful" is only ever chosen by hand (Advanced).
+function pickModel(){var cores=navigator.hardwareConcurrency||2;
+  if(isTablet()||lowMem()||cores<4||!self.crossOriginIsolated)return "light";
+  return "balanced";}
+function curModel(){var s=$("cm").value,k=s==="auto"?pickModel():(CM[s]?s:"light"),cap=read("tka:cap","");
+  if(cap&&CMORDER.indexOf(cap)>=0&&CMORDER.indexOf(k)>CMORDER.indexOf(cap))k=cap;return k;}
+var MODELN={light:"Light",balanced:"Balanced",heavy:"Powerful"};
+function engReady(){var e=$("eng").value;return e==="cpu"?(AI.active==="cpu"&&AI.cpuKey===curModel()&&!!AI.cpu):e==="gpu"?(AI.active==="gpu"&&!!AI.web):false;}
+function engCached(){var e=$("eng").value;return e==="cpu"?read("tka:gguf:"+curModel(),false)===true:e==="gpu"?read("tka:wllm:"+WM.id,false)===true:false;}
 function refresh(){
-  var e=$("eng").value,k=$("cm").value,ready=engReady(),cached=engCached();
+  var e=$("eng").value,k=curModel(),ready=engReady(),cached=engCached(),sc=$("pol").value;
   write("tka:eng",e);$("cmrow").hidden=e!=="cpu";$("polrow").hidden=$("pm").hidden=e==="bank";
+  $("pm").textContent="\u2728 Make "+(sc==="next"?"next week":sc==="month"?"this month":"this week")+" more imaginative";
   var bad=read("tka:gpubad",false)===true;
-  if(e==="bank"){status(true,"● No AI needed");$("setup").hidden=true;
-    $("wnote").textContent="Uses the built-in activity bank: instant, free, and works on every device.";}
-  else if(ready){status(true,"● AI helper ready");$("setup").hidden=true;
-    $("wnote").textContent=e==="cpu"?"Runs on this computer’s processor. Nothing leaves this device.":"Runs on the graphics card. Nothing leaves this device.";}
-  else if(cached){status(true,"● Saved on this device");$("setup").hidden=true;
+  if(e==="bank"){status(true,"\u25CF No AI needed");$("setup").hidden=true;
+    $("wnote").textContent="Uses the built-in activity bank only: instant, free, and works on every device.";}
+  else if(ready){status(true,"\u25CF AI helper ready");$("setup").hidden=true;
+    $("wnote").textContent=e==="cpu"?"Ready! Runs on this device’s processor ("+MODELN[k]+" size). Nothing leaves this device.":"Ready! Runs on the graphics card. Nothing leaves this device.";}
+  else if(AI.loading){status(null,"\u25CF Waking up the AI helper\u2026");$("setup").hidden=true;
+    $("wnote").textContent="Getting the AI helper ready in the background. You can keep planning while it loads!";}
+  else if(cached){status(true,"\u25CF Saved on this device");$("setup").hidden=true;
     $("wnote").textContent="The AI helper is saved here and wakes up when you need it.";}
-  else{status(null,"One-time download needed");$("setup").hidden=false;
-    $("setup").textContent="⬇ Set up AI helper ("+(e==="cpu"?CM[k].label:"about 1 GB")+")";
-    $("wnote").textContent="Planning works right away with the built-in bank. Set up the AI helper to personalize and rewrite activities.";}
+  else{status(null,"AI helper not loaded yet");$("setup").hidden=false;
+    $("setup").textContent="\u2B07 Set up AI helper ("+(e==="cpu"?CM[k].label:"about 1 GB")+")";
+    $("wnote").textContent="The AI helper normally loads itself in the background (one-time download). Press the button if it hasn’t started.";}
   if(e==="gpu"&&bad)$("wnote").textContent="Fast mode had trouble on this computer before. Reliable mode is the safer choice.";
+  if(e==="cpu"&&$("cm").value==="heavy")$("wnote").textContent+=" Powerful size is for strong computers (8 GB+ memory); if it can’t start, the app steps down by itself.";
   $("go").textContent="Plan it!";tech();}
 function tech(){var el=$("tech");if(!el)return;var mt=null;try{if(AI.cpu&&typeof AI.cpu.isMultithread==="function")mt=AI.cpu.isMultithread();}catch(e){}
-  el.innerHTML="Cross-origin isolated (needed for multi-core speed): <b>"+(self.crossOriginIsolated?"yes":"no")+"</b><br>Processor threads reported: <b>"+(navigator.hardwareConcurrency||"unknown")+"</b><br>Memory hint: <b>"+(navigator.deviceMemory?navigator.deviceMemory+" GB":"unknown")+"</b><br>Graphics (WebGPU): <b>"+(AI.gpu===null?"checking":AI.gpu?"available":"not available")+"</b>"+(mt===null?"":"<br>Multi-core mode in use: <b>"+(mt?"yes":"no")+"</b>")+(self.crossOriginIsolated?"":"<br>Tip: put coi-serviceworker.js next to this page to unlock multi-core speed.");}
+  el.innerHTML="Size picked for this device: <b>"+MODELN[curModel()]+($("cm").value==="auto"?" (automatic)":" (chosen by hand)")+"</b><br>Cross-origin isolated (needed for multi-core speed): <b>"+(self.crossOriginIsolated?"yes":"no")+"</b><br>Processor threads reported: <b>"+(navigator.hardwareConcurrency||"unknown")+"</b><br>Memory hint: <b>"+(navigator.deviceMemory?navigator.deviceMemory+" GB":"unknown")+"</b><br>Graphics (WebGPU): <b>"+(AI.gpu===null?"checking":AI.gpu?"available":"not available")+"</b>"+(mt===null?"":"<br>Multi-core mode in use: <b>"+(mt?"yes":"no")+"</b>")+(self.crossOriginIsolated?"":"<br>Tip: put coi-serviceworker.js next to this page to unlock multi-core speed.");}
 async function detectGpu(){try{AI.gpu=!!(navigator.gpu&&await navigator.gpu.requestAdapter());}catch(e){AI.gpu=false;}
   var o=$("eng").querySelector("option[value=gpu]");
   if(!AI.gpu){o.disabled=true;o.textContent="Fast mode: not available on this device";if($("eng").value==="gpu")$("eng").value="cpu";}
@@ -677,7 +695,8 @@ async function cpuLoad(key){
 // Returns {ok, note}. Never throws. Falls back from Fast mode to Reliable mode, and from Balanced to Light.
 function ensureAI(){
   if(AI.loading)return AI.loading;
-  AI.loading=doEnsure().then(function(r){AI.loading=null;refresh();return r;},function(e){AI.loading=null;refresh();return {ok:false,note:"The AI helper couldn’t start ("+friendly(e)+"). The built-in activity bank still works."};});
+  AI.loading=doEnsure();refresh();
+  AI.loading=AI.loading.then(function(r){AI.loading=null;refresh();return r;},function(e){AI.loading=null;refresh();return {ok:false,note:"The AI helper couldn’t start ("+friendly(e)+"). The built-in activity bank still works."};});
   return AI.loading;}
 async function doEnsure(){
   var e=$("eng").value,note="";
@@ -688,13 +707,14 @@ async function doEnsure(){
     else{try{await webLoad();AI.active="gpu";return {ok:true,note:""};}
       catch(err){write("tka:gpubad",true);AI.web=null;AI.active=null;setProg(null,"");switchCpu();note="Fast mode couldn’t start on this computer ("+friendly(err)+"), so I switched to Reliable mode, which works on almost any computer.";}}
   }
-  var key=$("cm").value;
-  try{await cpuLoad(key);AI.active="cpu";return {ok:true,note:note};}
-  catch(err){
-    if(key==="balanced"){
-      try{$("cm").value="light";write("tka:cm","light");await cpuLoad("light");AI.active="cpu";return {ok:true,note:(note?note+" ":"")+"The Balanced size was too big for this device ("+friendly(err)+"), so the Light size was used."};}
-      catch(e2){err=e2;}}
-    return {ok:false,note:(note?note+" ":"")+"The AI helper couldn’t start ("+friendly(err)+"). The built-in activity bank still works."};}
+  var key=curModel(),first=key,why="";
+  while(true){
+    try{await cpuLoad(key);AI.active="cpu";
+      var nt=(key!==first)?"The "+MODELN[first]+" size was too big for this device ("+why+"), so the "+MODELN[key]+" size was used.":"";
+      return {ok:true,note:(note?note+" ":"")+nt};}
+    catch(err){var ix=CMORDER.indexOf(key);
+      if(ix>0){if(!why)why=friendly(err);key=CMORDER[ix-1];write("tka:cap",key);continue;}
+      return {ok:false,note:(note?note+" ":"")+"The AI helper couldn’t start ("+friendly(err)+"). The built-in activity bank still works."};}}
 }
 // Generate text with whichever engine is loaded.
 async function aiGen(msgs,o){
@@ -706,7 +726,7 @@ async function aiGen(msgs,o){
     }catch(err){if(!AI.stop){write("tka:gpubad",true);AI.web=null;AI.active=null;switchCpu();
         throw new Error("Fast mode stopped working ("+friendly(err)+"). Reliable mode is selected now, so just try again.");}}
     return acc;}
-  var prompt=msgs.map(function(m){return "<|im_start|>"+m.role+"\n"+m.content+"<|im_end|>\n";}).join("")+"<|im_start|>assistant\n";
+  var prompt=msgs.map(function(m){return "<|im_start|>"+m.role+"\n"+m.content+"<|im_end|>\n";}).join("")+"<|im_start|>assistant\n"+(AI.cpuKey&&CM[AI.cpuKey]&&CM[AI.cpuKey].nothink?"<think>\n\n</think>\n\n":"");
   var res=await AI.cpu.createCompletion(prompt,{nPredict:max,sampling:{temp:temp,top_k:40,top_p:0.9,penalty_repeat:1.1},
     onNewToken:function(tok,piece,text,opt){acc=text;
       if(AI.stop||text.indexOf("<|im_end|>")>=0||text.indexOf("<|endoftext|>")>=0){try{opt.abortSignal();}catch(e){}}
@@ -736,9 +756,11 @@ function applyAI(a,d,age){var tcs=tipCost(d,age||a.age||3);
 async function rewriteAct(a,instr,age){
   var msgs=[{role:"system",content:SYS2},{role:"user",content:"Today is "+todayStr()+".\nClass age: "+AGEL[age]+"\nAge guidance: "+AGEG[age]+"\nMonthly theme: "+(a.theme||"none")+"\nPlanner row: "+a.slot+"\nWeekly supply budget: $"+budget()+" for all five weekly activities, so keep supplies cheap.\n\nCurrent activity:\n"+toLab({title:a.title,summary:a.summary,materials:a.materials,steps:a.steps,tip:a.tip,cost:a.cost,std:a.std})+"\n\nTask: "+instr+"\nWrite the finished activity now in exactly the same format."}];
   var t0=Date.now();
-  var txt=await aiGen(msgs,{max:420,temp:0.7,onText:function(t){say((AI.tag||"The AI is writing")+"… "+Math.round((Date.now()-t0)/1000)+"s, about "+t.split(/\s+/).length+" words");}});
+  var txt=await aiGen(msgs,{max:420,temp:0.7,onText:function(t){var sec=Math.round((Date.now()-t0)/1000);say((AI.tag||"\u2728 Working a little magic")+" \u2014 "+magic(sec)+"\u2026 "+sec+"s");}});
   return AI.stop?null:parseLab(txt);}
-function busyUI(b){$("go").disabled=$("mo").disabled=$("pm").disabled=b;$("stop").hidden=!b;}
+var MAGIC=["gathering sparkles","whispering to the story fairies","stirring the idea cauldron","asking the imagination owls","sprinkling pixie dust","hunting for a hidden surprise"];
+function magic(sec){return MAGIC[Math.floor(sec/5)%MAGIC.length];}
+function busyUI(b){$("go").disabled=$("pw").disabled=$("mo").disabled=$("pm").disabled=b;$("stop").hidden=!b;}
 // ---------- Helpers shared by the planners ----------
 var GROUPS={LL:["Song & Fingerplays","Story","Literacy"],CA:["Art","Music & Movement"],MA:["Math"],SC:["Science"],PH:["Gross Motor Skill"]};
 function shuf(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;}return a;}
@@ -760,7 +782,38 @@ function pickRows(n,use,focus){
 function tipCost(d,age){var tip=String(d.ageTip||"").trim(),cost=String(d.estCost||"").trim();
   if(/\$\s?\d|\bcosts?\b|\bbudget\b/i.test(tip)){if(!cost)cost=tip;tip="";}
   return {tip:tip||AGEG[age],cost:cost};}
-// ---------- Plan it! (bank first, AI polishes) ----------
+// ---------- Imagining activities from the teacher's own words (AI first) ----------
+var ROWHINT={"Song & Fingerplays":"a song, chant or fingerplay with motions","Story":"story time with a book or a told story, plus a way for children to join in","Art":"a hands-on art or craft project","Literacy":"a letter, sound, rhyme or word game","Math":"counting, shapes, sorting, patterns or measuring","Science":"a hands-on exploration or simple experiment","Gross Motor Skill":"big body movement and active play","Music & Movement":"music, rhythm and dancing"};
+var SYSG="You are a warm, wildly imaginative early-childhood teacher at Treehouse Kids Academy in Idaho. You invent ONE brand-new classroom activity from a teacher's idea.\n"+
+"Make it magical and memorable: give it a playful hook such as a pretend role, secret mission, mystery, treasure hunt or surprise that children will talk about at home. Build it directly on the teacher's idea and use its own words (the animal, toy or topic) in the title and in the steps. Never write a plain worksheet, a generic craft, or a talk-about-it lesson.\n"+
+"Answer in EXACTLY this format, one label per line, with nothing before or after it:\n"+
+"TITLE: a cute title under 8 words\nSUMMARY: two sentences\nMATERIALS: item; item; item\nSTEPS: step one | step two | step three | step four\nAGE TIP: one sentence about adapting for the age, never about money\nCOST: like About $3\nSTANDARDS: two or three codes from LL, MA, SC, PH, CA, SE, AL\n"+
+"(LL language and literacy, MA math, SC science, PH physical, CA creative arts, SE social-emotional, AL approaches to learning.)\n"+
+"Example for a different idea (\"puddles\"). Do not copy it:\n"+
+"TITLE: Puddle Detectives\nSUMMARY: The children become detectives hunting for clues about where a puddle went. They splash, dab and measure to solve the mystery.\nMATERIALS: shallow tray; water; sponges; chalk\nSTEPS: Give each detective a sponge badge and announce that a puddle has vanished | Pour water on the tray and let the detectives splash it with their fingers | Use sponges to rescue the puddle and squeeze it into a cup | Draw chalk circles where the puddle used to be and cheer for the case solved\nAGE TIP: Let younger children just splash and squeeze while older ones count the sponge squeezes.\nCOST: About $2\nSTANDARDS: SC, PH, SE\n"+
+"Rules: match the child's age exactly; use only cheap household, recycled or dollar-store items; 3 to 5 short steps in plain friendly words; under age 3 use no small parts or choking hazards; never include children's names.";
+async function genAct(idea,slot,theme,age,avoid){
+  var user="Today is "+todayStr()+".\nTeacher's idea: “"+idea+"”\nClass age: "+AGEL[age]+"\nAge guidance: "+AGEG[age]+"\nMonthly theme: "+(theme||"none")+"\nPlanner row: "+slot+" ("+(ROWHINT[slot]||"a classroom activity")+")\nWeekly supply budget: $"+budget()+" for all five weekly activities, so keep supplies cheap.\n"+
+    (avoid&&avoid.length?"Already planned this week (make something clearly different): "+avoid.join("; ")+"\n":"")+"\nInvent the activity now in exactly the labeled format.";
+  var msgs=[{role:"system",content:SYSG},{role:"user",content:user}];
+  for(var t=0;t<2&&!AI.stop;t++){
+    var t0=Date.now();
+    var txt=await aiGen(msgs,{max:460,temp:t?0.5:0.8,onText:function(s){var sec=Math.round((Date.now()-t0)/1000);say((AI.tag||"✨ Imagining")+" — "+magic(sec)+"… "+sec+"s");}});
+    var d=parseLab(txt);if(d&&!AI.stop)return d;}
+  return null;}
+function safety(a,age){
+  var all=(a.title+" "+a.summary+" "+a.materials.join(" ")+" "+a.steps.join(" ")).toLowerCase(),t=a.tip||"";
+  if(/taste|snack|smell|milk|apple|fruit|cookie|flour|cinnamon|vanilla|peanut|\bnuts?\b|cereal|pasta/.test(all)&&!/allerg/i.test(t))t+=" Check for allergies before any taste, smell, or food activity.";
+  if(age<=2&&/bead|button|marble|coin|popcorn|grape|\bnuts?\b|pom.?pom|rice|beans|confetti|glitter|pebble/.test(all)&&!/choking|swallow/i.test(t))t+=" Use only large pieces that can’t be swallowed, and stay close.";
+  a.tip=t.trim().slice(0,300);}
+function makeAct(d,text,age,only,slot,theme){
+  d.theme=theme;var a=toAct(d,text,age,only,slot);a.theme=theme;a.pol=true;a.ai=true;
+  var first=ROWSTD[slot];a.std=[first].concat(a.std.filter(function(k){return k!==first;})).slice(0,3);
+  safety(a,age);return a;}
+function whyNot(eng,fallback){var n=String(eng&&eng.note||"").replace(/\s*The built-in activity bank still works\.?/,"").trim().replace(/\.$/,"");
+  return n?n.charAt(0).toLowerCase()+n.slice(1):fallback;}
+function weekTitles(k){return plan(k).acts.map(function(a){return a.title;}).slice(0,8);}
+// ---------- Plan it! (one activity, imagined from the teacher's words) ----------
 async function draft(){
   if(AI.busy)return;
   var text=$("idea").value.trim();if(!text){say("Type what the kids are doing first \u{1F642}");$("idea").focus();return;}
@@ -768,42 +821,85 @@ async function draft(){
   AI.busy=true;AI.stop=false;busyUI(true);
   try{
     var slot=slotSel!=="auto"?slotSel:guessSlot(text),th=scoreTheme(text,only)||fbTheme(only);
-    var d=bankAct(th.t,slot,age,text,null),a=toAct(d,text,age,only,slotSel);
-    a.theme=th.t;a.month=th.m;
+    var eng={ok:false,note:""},a=null;
+    if($("eng").value!=="bank"){
+      say(engReady()?"✨ Imagining your activity…":"✨ Waking up the AI helper… I’ll start the moment it’s ready.");
+      eng=await ensureAI();
+      if(eng.ok&&!AI.stop){AI.tag="✨ Imagining your activity";
+        var d=await genAct(text,slot,th.t,age,weekTitles(V.wk));
+        if(d){a=makeAct(d,text,age,only,slot,th.t);a.month=th.m;}}
+      if(AI.stop){say("Stopped. Nothing was added.");return;}}
+    var fromAI=!!a;
+    if(!a){var bd=bankAct(th.t,slot,age,text,null);a=toAct(bd,text,age,only,slotSel);a.theme=th.t;a.month=th.m;}
     var r=place(a,th.m),where=MN[th.m]+" "+yearOf(th.m)+" • "+a.theme+", "+DAYS[r.day]+", "+a.slot;
-    if($("eng").value==="bank"){say("Added “"+a.title+"” ("+where+"). Click it to see the steps.");$("idea").value="";return;}
-    if(!engReady()&&!engCached()){say("Added a starter activity ("+where+") from the built-in bank. To have the AI rewrite activities around your ideas, press “Set up AI helper” in this box (one-time download).");$("setup").hidden=false;return;}
-    say("Added a starter activity ("+where+"). Now the AI is making it more creative…");
-    var eng=await ensureAI();
-    if(!eng.ok){say("Added “"+a.title+"” from the built-in bank ("+where+"). "+eng.note);return;}
-    AI.tag="The AI is writing";
-    var nd=await rewriteAct(a,"Rebuild this activity around the teacher's idea: “"+text+"”. Keep the planner row ("+a.slot+") and the theme.",age);
-    if(nd){applyAI(a,nd,age);save();render();$("idea").value="";say("Done! “"+a.title+"” is in "+where+". Click it to see the steps, and review it for safety."+(eng.note?" "+eng.note:""));}
-    else say(AI.stop?"Stopped. The starter activity “"+a.title+"” was kept ("+where+").":"The AI’s answer couldn’t be read, so the starter activity “"+a.title+"” was kept ("+where+"). You can edit it and use Ask AI.");
-  }catch(e){say("Couldn’t finish the AI step: "+(e&&e.message?e.message:e)+" The starter activity is still on your calendar.");}
+    if(fromAI){$("idea").value="";say("Ta-da! “"+a.title+"” is in "+where+". Click it to see the steps, and review it for safety."+(eng.note?" "+eng.note:""));}
+    else if($("eng").value==="bank")say("Added “"+a.title+"” ("+where+") from the built-in bank. Click it to see the steps.");
+    else say("Added “"+a.title+"” ("+where+") from the built-in bank, because "+(eng.ok?"the AI’s answer couldn’t be read this time. Press Plan it! again to retry":whyNot(eng,"the AI helper isn’t ready yet"))+". You can edit it and use Ask AI.");
+  }catch(e){say("Couldn’t finish: "+(e&&e.message?e.message:e));}
   finally{AI.tag="";AI.busy=false;busyUI(false);}}
-// ---------- Plan the whole month: instant bank plan steered by the teacher's focus, then AI polish a few at a time ----------
+// ---------- Plan the week (one imagined activity per open day, all from the teacher's words) ----------
+async function planWeek(){
+  if(AI.busy)return;
+  var age=+$("age").value,only=$("gm").value,k=V.wk,p=plan(k),typed=$("idea").value.trim().slice(0,300);
+  var open=[],upcoming=0;
+  for(var d=0;d<5;d++){var dt=pd(k);dt.setDate(dt.getDate()+d);if(dt>=today0()){upcoming++;if(!p.acts.some(function(x){return x.day===d;}))open.push(d);}}
+  if(!upcoming){say("That week is already over. Pick a current or future week on the calendar first.");return;}
+  if(!open.length){say("Every upcoming day this week already has an activity. Move or remove one, or use “Plan it!” to add more.");return;}
+  var idea=typed||p.theme||"";
+  if(!idea){say("Type an idea for the week first (like “dinosaurs and counting”), or give this week a theme, and I’ll build all five days around it.");$("idea").focus();return;}
+  AI.busy=true;AI.stop=false;busyUI(true);
+  var made=0,failed=0,eng={ok:false,note:""},fromBank=false;
+  try{
+    var th=p.theme?{t:p.theme}:(scoreTheme(idea,only)||fbTheme(only)),use={};
+    p.acts.forEach(function(x){use[x.slot]=(use[x.slot]||0)+1;});
+    var rows=pickRows(open.length,use,idea),avoid=weekTitles(k);
+    if($("eng").value!=="bank"){
+      say(engReady()?"✨ Imagining your week…":"✨ Waking up the AI helper… I’ll start the moment it’s ready.");
+      eng=await ensureAI();}
+    for(var i=0;i<open.length&&!AI.stop;i++){
+      var dd=open[i],dt2=pd(k);dt2.setDate(dt2.getDate()+dd);
+      var a=null;
+      if(eng.ok){AI.tag="✨ Imagining "+DAYS[dd]+" ("+(i+1)+" of "+open.length+")";
+        var g=await genAct(idea,rows[i],th.t,age,avoid);
+        if(g)a=makeAct(g,idea,age,only,rows[i],th.t);else if(!AI.stop)failed++;}
+      else{fromBank=true;var bd=bankAct(th.t,rows[i],age,idea,null);a=toAct(bd,idea,age,only,rows[i]);a.theme=th.t;}
+      if(a){a.month=dt2.getMonth();a.day=dd;p.acts.push(a);avoid.push(a.title);made++;save();V.view="plan";render();}}
+    if(typed&&made){$("idea").value="";}
+    var wk="the week of "+fmtD(k,0);
+    if(AI.stop)say("Stopped. "+made+" activit"+(made===1?"y":"ies")+" added to "+wk+".");
+    else if(fromBank)say("Added "+made+" starter activities to "+wk+" from the built-in bank, because "+whyNot(eng,"the AI helper isn’t switched on")+". Press “Plan the week” again once the AI is ready for fresh ideas.");
+    else say("Ta-da! "+made+" fresh activit"+(made===1?"y":"ies")+" imagined for "+wk+", all built around “"+idea.slice(0,60)+"”."+(failed?" "+failed+" day"+(failed===1?"":"s")+" couldn’t be imagined this time. Press Plan the week again to fill "+(failed===1?"it":"them")+".":"")+" Review everything for safety and cost."+(eng.note?" "+eng.note:""));
+  }catch(e){say("Added "+made+" activities, then stopped: "+(e&&e.message?e.message:e));}
+  finally{AI.tag="";AI.busy=false;busyUI(false);save();render();}}
+// ---------- Plan the whole month: instant bank plan steered by the teacher's focus ----------
 function focusKey(m){return yearOf(m)+"-"+m;}
 function getFocus(m){return String(read("tka:focus",{})[focusKey(m)]||"");}
 function setFocus(m,t){var o=read("tka:focus",{});if(t)o[focusKey(m)]=t;else delete o[focusKey(m)];write("tka:focus",o);}
-function polLimit(){var n=parseInt($("pol").value,10);return n>0?n:5;}
-async function polishLoop(list,age,focus,limit){
-  var todo=list.filter(function(a){return !a.pol;}).slice(0,limit),done=0;
+// ---------- The "make it more imaginative" wand (rewrites starter activities one at a time) ----------
+async function polishLoop(list,age,focus){
+  var todo=list.filter(function(a){return !a.pol;}),done=0;
   for(var i=0;i<todo.length&&!AI.stop;i++){
-    AI.tag="Polishing activity "+(i+1)+" of "+todo.length;
-    var nd=await rewriteAct(todo[i],"Make it more creative and memorable with a fun hook children will love. Keep the planner row ("+todo[i].slot+"), the theme, and cheap supplies."+(focus?" The teacher's focus for this month is “"+focus+"”, so work it in naturally where it fits.":""),age);
-    if(nd){applyAI(todo[i],nd,age);done++;save();render();}}
+    AI.tag="✨ Sprinkling imagination on activity "+(i+1)+" of "+todo.length;
+    var nd=await rewriteAct(todo[i],"Reimagine it with a playful hook children will love, such as a pretend role, a secret mission or a surprise. Keep the planner row ("+todo[i].slot+"), the theme, and cheap supplies."+(focus?" The teacher’s focus for this month is “"+focus+"”, so work it in naturally where it fits.":""),age);
+    if(nd){applyAI(todo[i],nd,age);safety(todo[i],age);done++;save();render();}}
   return {done:done,total:todo.length,left:list.filter(function(a){return !a.pol;}).length};}
 function polMsg(r,eng){
-  var more=r.left?" "+r.left+" still have their starter versions. Press “Polish more with AI” whenever you have a few minutes.":" Every planned activity is polished.";
-  return (AI.stop?"Stopped. ":"Done! ")+r.done+" activities polished by the AI."+more+" Review everything for safety and cost."+(eng&&eng.note?" "+eng.note:"");}
+  if(!r.done&&!AI.stop)return "The magic fizzled this time, so the starter ideas were kept. Press the wand again to retry."+(eng&&eng.note?" "+eng.note:"");
+  return (AI.stop?"Stopped. ":"Ta-da! ")+r.done+" activit"+(r.done===1?"y just got":"ies just got")+" a sprinkle of imagination ✨"+(r.left?" "+r.left+" more are still waiting for their turn.":"")+" Peek at them, then check for safety and cost."+(eng&&eng.note?" "+eng.note:"");}
+function polScope(m){
+  var sc=$("pol").value,out=[];
+  var add=function(k){plan(k).acts.forEach(function(a){if(a.bk&&!a.pol&&actDate(k,a)>=today0())out.push({a:a,d:actDate(k,a)});});};
+  if(sc==="month")monthActs(m).forEach(function(x){if(x.a.bk&&!x.a.pol&&x.d>=today0())out.push({a:x.a,d:x.d});});
+  else if(sc==="next"){var n=pd(V.wk);n.setDate(n.getDate()+7);add(iso(n));}
+  else add(V.wk);
+  return out.sort(function(a,b){return a.d-b.d;}).map(function(x){return x.a;});}
 async function monthPlan(){
   if(AI.busy)return;
   var age=+$("age").value,m=$("gm").value==="auto"?V.m:+$("gm").value;
   fixAy(m);var tot=0;weeks(m).forEach(function(w){for(var q=0;q<5;q++)if(okDay(w,q,m))tot++;});
   if(!tot){say("There are no upcoming school days left in "+MN[m]+".");return;}
   var typed=$("idea").value.trim().slice(0,200),focus=typed||getFocus(m);
-  if(!confirm("Plan the "+tot+" remaining school days in "+MN[m]+" "+yearOf(m)+(focus?", focusing on “"+focus+"”":"")+"? It fills in instantly. Existing activities stay."))return;
+  if(!confirm("Plan the "+tot+" remaining school days in "+MN[m]+" "+yearOf(m)+(focus?", focusing on “"+focus+"”":"")+"? It fills in instantly from the built-in activity bank. Existing activities stay."))return;
   if(typed){setFocus(m,typed);$("idea").value="";}
   AI.busy=true;AI.stop=false;busyUI(true);
   var made=[];
@@ -822,12 +918,13 @@ async function monthPlan(){
     save();V.m=m;V.wk=firstK||V.wk;V.view="plan";render();
     var base="Planned "+made.length+" activities in "+MN[m]+" instantly"+(focus?", leaning toward your focus “"+focus.slice(0,60)+"”":"")+". ";
     if($("eng").value==="bank"){say(base+"Check the By Standard tab for coverage, then click any activity to edit it.");return;}
-    if(!engReady()&&!engCached()){say(base+"To have the AI make them more creative, press “Set up AI helper” in the box above (one-time download).");$("setup").hidden=false;return;}
-    say(base+"Now the AI is polishing the soonest "+Math.min(polLimit(),made.length)+" one at a time. You can keep working or press Stop.");
+    var first=made.filter(function(a){return plan(firstK).acts.indexOf(a)>=0;});
+    say(base+(engReady()?"Now sprinkling some AI imagination on the first week…":"Waking up the AI helper, then I’ll sprinkle some imagination on the first week…")+" Press Stop any time.");
     var eng=await ensureAI();
     if(!eng.ok){say(base+eng.note);return;}
-    var r=await polishLoop(made,age,focus,polLimit());
-    say(base+polMsg(r,eng));
+    var r=await polishLoop(first,age,focus);
+    var rest=made.filter(function(a){return !a.pol;}).length;
+    say(base+polMsg(r,eng)+(rest?" The other weeks stay as starter ideas until you press “Make next week more imaginative”.":""));
   }catch(e){say("Planned "+made.length+" activities, but the AI step stopped: "+(e&&e.message?e.message:e));}
   finally{AI.tag="";AI.busy=false;busyUI(false);save();render();}
 }
@@ -836,20 +933,20 @@ async function polishMore(){
   var age=+$("age").value,m=$("gm").value==="auto"?V.m:+$("gm").value,typed=$("idea").value.trim().slice(0,200);
   if(typed)setFocus(m,typed);
   var focus=getFocus(m);
-  if($("eng").value==="bank"){say("AI help is switched off. Choose Reliable mode in the AI helper box.");return;}
-  if(!engReady()&&!engCached()){say("Set up the AI helper first (one-time download), then press this button again.");$("setup").hidden=false;return;}
-  var list=monthActs(m).filter(function(x){return x.a.bk&&!x.a.pol&&x.d>=today0();}).sort(function(a,b){return a.d-b.d;}).map(function(x){return x.a;});
-  if(!list.length){say("Every planned activity in "+MN[m]+" has already been polished or edited by a teacher.");return;}
+  if($("eng").value==="bank"){say("AI help is switched off. Open Advanced & technical details and choose the AI mode to use the wand.");return;}
+  var list=polScope(m);
+  if(!list.length){say("Nothing waiting for a sprinkle there ✨ Starter ideas from “Plan the whole month” get picked up here, and anything you or the AI already wrote is left alone.");return;}
   AI.busy=true;AI.stop=false;busyUI(true);
   try{
+    say(engReady()?"✨ Sprinkling imagination on "+list.length+" activit"+(list.length===1?"y":"ies")+"…":"✨ Waking up the AI helper… then I’ll sprinkle imagination on "+list.length+" activit"+(list.length===1?"y":"ies")+".");
     var eng=await ensureAI();
     if(!eng.ok){say(eng.note);return;}
-    say("Polishing the soonest "+Math.min(polLimit(),list.length)+" of "+list.length+" activities. You can keep working or press Stop.");
-    var r=await polishLoop(list,age,focus,polLimit());
+    var r=await polishLoop(list,age,focus);
     say(polMsg(r,eng));
   }catch(e){say("The AI step stopped: "+(e&&e.message?e.message:e));}
   finally{AI.tag="";AI.busy=false;busyUI(false);save();render();}
 }
+$("pw").onclick=planWeek;
 $("mo").onclick=monthPlan;
 $("pm").onclick=polishMore;
 // ---------- Auto-size text boxes ----------
@@ -979,19 +1076,27 @@ $("go").onclick=draft;
 function stopAI(){AI.stop=true;try{if(AI.web&&AI.web.interruptGenerate)AI.web.interruptGenerate();}catch(e){}}
 $("stop").onclick=stopAI;
 $("eng").onchange=function(){say("");refresh();};
-$("pol").onchange=function(){write("tka:pol",$("pol").value);};
-$("cm").onchange=function(){write("tka:cm",$("cm").value);refresh();};
+$("pol").onchange=function(){write("tka:pol",$("pol").value);refresh();};
+$("cm").onchange=function(){write("tka:cm",$("cm").value);write("tka:cap","");refresh();};
+$("auto").onchange=function(){write("tka:auto",$("auto").checked);};
+// Quietly load the AI helper in the background a moment after the page opens, so it is ready when the teacher is.
+function autoLoad(){
+  if(!$("auto").checked||$("eng").value==="bank"||AI.busy||AI.loading||engReady())return;
+  try{var c=navigator.connection;if(c&&c.saveData&&!engCached())return;}catch(x){}
+  ensureAI().then(function(r){if(!r.ok&&r.note)$("dlnote").textContent=r.note;else if(r.note)$("dlnote").textContent=r.note;});}
 $("setup").onclick=async function(){
   if(AI.busy||AI.loading)return;var b=$("setup");b.disabled=true;
   say("Setting up the AI helper…");
   var r=await ensureAI();b.disabled=false;
-  say(r.ok?"The AI helper is ready! Plan it!, Ask AI, and the sign suggestions can use it now."+(r.note?" "+r.note:""):(r.note||"The AI helper couldn’t start."));};
+  say(r.ok?"The AI helper is ready! Plan it!, Plan the week, Ask AI, and the sign suggestions can use it now."+(r.note?" "+r.note:""):(r.note||"The AI helper couldn’t start."));};
 (function init(){
   var sv=read("tka:eng","cpu");sv=sv==="browser"?"cpu":sv==="sample"?"bank":sv;if(["cpu","gpu","bank"].indexOf(sv)<0)sv="cpu";
   $("eng").value=sv;
-  var dm=(isTablet()||lowMem())?"light":"balanced",cm=read("tka:cm",dm);$("cm").value=CM[cm]?cm:dm;
-  var pv=String(read("tka:pol","5"));$("pol").value=["5","10","999"].indexOf(pv)>=0?pv:"5";
-  V.wk=defWeek(V.m);refresh();detectGpu();render();})();
+  var cm=String(read("tka:cm","auto"));$("cm").value=(cm==="auto"||CM[cm])?cm:"auto";
+  var pv=String(read("tka:pol","wk"));pv=pv==="999"?"month":pv;$("pol").value=["wk","next","month"].indexOf(pv)>=0?pv:"wk";
+  $("auto").checked=read("tka:auto",true)!==false;
+  V.wk=defWeek(V.m);refresh();detectGpu();render();
+  setTimeout(autoLoad,1500);})();
 </script>
 </body>
 </html>
