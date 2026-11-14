@@ -747,7 +747,7 @@ async function doEnsure(){
   }
   var key=curModel(),first=key,why="";
   while(true){
-    try{await cpuLoad(key);AI.active="cpu";setTimeout(primeCache,300);
+    try{await cpuLoad(key);AI.active="cpu";setTimeout(benchAndPrime,300);
       var nt=(key!==first)?"The "+MODELN[first]+" size was too big for this device ("+why+"), so the "+MODELN[key]+" size was used.":"";
       return {ok:true,note:(note?note+" ":"")+nt};}
     catch(err){var ix=CMORDER.indexOf(key);
@@ -820,6 +820,26 @@ var MAGIC=["gathering sparkles","whispering to the story fairies","stirring the 
 function magic(sec){return MAGIC[Math.floor(sec/5)%MAGIC.length];}
 function busyUI(b){$("go").disabled=$("pw").disabled=$("mo").disabled=$("pm").disabled=b;var s=$("stop");if(!s.dataset.t)s.dataset.t=s.textContent;s.hidden=!b;s.disabled=false;s.textContent=s.dataset.t;
   if(!b)setTimeout(primeCache,400);}
+// Measure how fast this computer really is (about 3 seconds, once), and move slow computers to the faster Light size before the first activity
+async function benchTps(){var n=0,t0=0;
+  try{await AI.cpu.createCompletion("<|im_start|>user\nCount: one, two, three, four, five, six, seven, eight, nine, ten.<|im_end|>\n<|im_start|>assistant\n",{nPredict:18,useCache:false,sampling:{temp:0},
+    onNewToken:function(t,p,text,opt){if(!t0)t0=Date.now();n++;if(n>=18){try{opt.abortSignal();}catch(e){}}}});}catch(e){return 0;}
+  var dt=(Date.now()-t0)/1000;return (n>6&&dt>0.2)?(n-1)/dt:0;}
+async function benchAndPrime(){
+  if(AI.benching||AI.active!=="cpu"||!AI.cpu||AI.busy)return;
+  var key=AI.cpuKey,saved=+read("tka:tps:"+key,0)||0;AI.benching=true;
+  try{
+    var tps=saved;
+    if(!tps){var bp=benchTps();AI.pending=bp.then(function(){},function(){});tps=await bp;if(tps>0)write("tka:tps:"+key,Math.round(tps*10)/10);}
+    if(tps>0)AI.tps=tps;
+    if(tps>0&&tps<5&&key!=="light"&&$("cm").value==="auto"&&!AI.busy){
+      write("tka:cap","light");AI.tps=0;AI.speedNote="Switched to the faster Light size because this computer runs the AI slowly.";
+      AI.benching=false;await ensureAI();
+      var dn=$("dlnote");if(dn)dn.textContent="This computer runs the AI slowly (about "+Math.round(tps*10)/10+" words per second), so I switched to the faster Light size so activities take about half a minute. You can pick a bigger size under Advanced & technical details.";
+      return;}
+    if(tps>0&&tps<5&&key!=="light"){var dn2=$("dlnote");if(dn2)dn2.textContent="This size runs slowly on this computer (about "+Math.round(tps*10)/10+" words per second). Choose Light under Advanced & technical details for faster activities.";}
+  }finally{AI.benching=false;}
+  primeCache();}
 // Warm the AI's memory of the long instructions once, so each activity only has to read the short new part
 function primeCache(){if(AI.busy||AI.active!=="cpu"||!AI.cpu||typeof SYSG==="undefined")return;
   var pre="<|im_start|>system\n"+SYSG+"<|im_end|>\n<|im_start|>user\n";
@@ -868,7 +888,7 @@ async function genAct(idea,slot,theme,age,avoid,others){
   var msgs=[{role:"system",content:SYSG},{role:"user",content:base}],temps=[0.8,0.9];
   for(var t=0;t<2&&!AI.stop;t++){
     var t0=Date.now(),retry=t?" (one more try)":"";
-    var txt=await aiGen(msgs,{max:200,temp:temps[t],abortIf:function(s){return !!earlyWhy(s,age);},onText:function(s){var sec=Math.round((Date.now()-t0)/1000);say((AI.tag||"\u2728 Imagining")+retry+" \u2014 "+magic(sec)+"\u2026 "+sec+"s");}});
+    var txt=await aiGen(msgs,{max:180,temp:temps[t],abortIf:function(s){return !!earlyWhy(s,age);},onText:function(s){var sec=Math.round((Date.now()-t0)/1000);say((AI.tag||"\u2728 Imagining")+retry+" \u2014 "+magic(sec)+"\u2026 "+sec+"s");}});
     if(AI.stop)return null;
     var ew=earlyWhy(txt,age),d=ew?null:parseLab(txt),why=ew?[ew]:(d?draftIssues(d,{idea:idea,age:age,others:others||[],loose:t>=1}):["its answer was not in the right format"]);
     if(!why.length)return d;
@@ -888,7 +908,7 @@ function makeAct(d,text,age,only,slot,theme){
   var first=ROWSTD[slot],st=[first].concat((d.standards||[]).filter(function(k){return STD[k]&&k!==first;}));
   if(st.length<2)inferStd(a).forEach(function(k){if(st.indexOf(k)<0&&st.length<3)st.push(k);});
   a.std=st.filter(function(k,i){return st.indexOf(k)===i;}).slice(0,3);
-  safety(a,age);return a;}
+  safety(a,age);addCaveats(a);return a;}
 function whyNot(eng,fallback){var n=String(eng&&eng.note||"").replace(/\s*The built-in activity bank still works\.?/,"").trim().replace(/\.$/,"");
   return n?n.charAt(0).toLowerCase()+n.slice(1):fallback;}
 function weekTitles(k){return plan(k).acts.map(function(a){return a.title;}).slice(0,8);}
@@ -964,7 +984,7 @@ async function polishLoop(list,age,focus){
     AI.tag="✨ Sprinkling imagination on activity "+(i+1)+" of "+todo.length;
     var nd=await rewriteAct(todo[i],"Reimagine it with a playful hook children will love, such as a pretend role, a secret mission or a surprise. Keep the planner row ("+todo[i].slot+"), the theme, and cheap supplies."+(focus?" The teacher’s focus for this month is “"+focus+"”, so work it in naturally where it fits.":""),age);
     if(nd){var bad=draftIssues(nd,{age:age,loose:true,others:[]}).filter(function(w){return /unsafe|copied|repeats|identical|format|steps/.test(w);});if(bad.length){AI.rejected=(AI.rejected||0)+1;continue;}}
-    if(nd){applyAI(todo[i],nd,age);safety(todo[i],age);done++;save();render();if(done===1&&i<todo.length-1)await speedCheck();}}
+    if(nd){applyAI(todo[i],nd,age);safety(todo[i],age);addCaveats(todo[i]);done++;save();render();if(done===1&&i<todo.length-1)await speedCheck();}}
   return {done:done,total:todo.length,left:list.filter(function(a){return !a.pol;}).length};}
 function polMsg(r,eng){
   if(!r.done&&!AI.stop)return "The magic fizzled this time, so the starter ideas were kept. Press the wand again to retry."+(eng&&eng.note?" "+eng.note:"");
@@ -1052,11 +1072,11 @@ var SAFE_RE=[
   {id:"heat",lvl:"caution",re:[/\b(stove|stovetop|oven|microwave|hot ?plate|boil|boiling|boiled|simmer|hot (?:water|glue|wax|oil|pan|pot|chocolate|cocoa|soup)|glue gun|toaster|kettle|electric (?:outlet|socket)|plug(?:s|ged)? in)\b/],msg:"Heat or electricity is involved. Only an adult should do that step, well away from the children."},
   {id:"height",lvl:"danger",re:[/\b(?:jump|jumps|jumping|leap|leaps|leaping|dive|diving|fall|falls|falling|drop|dropping|slide|sliding)\s+(?:off|from|down from|off of)\s+(?:a |an |the |their |your )?(?:chairs?|tables?|desks?|shelf|shelves|counters?|ladders?|roofs?|trees?|fences?|walls?|bookcases?|stools?|stairs?|steps|benches?|slides?|swings?|beds?|bunk|ledge|balcony|platform|playground equipment|top)\b/,/\b(?:climb|climbing|stand|standing|jump|jumping|dance|dancing)\s+(?:up )?(?:on|onto|on top of)\s+(?:a |an |the )?(?:chairs?|tables?|desks?|shelf|shelves|counters?|ladders?|roofs?|trees?|fences?|walls?|bookcases?|stools?)\b/,/\b(high places?|from (?:a )?(?:great )?heights?|rooftop|balcony|cliff|top bunk|high up)\b/],msg:"Has children jumping or climbing from a height. Keep everything at ground level with a soft landing."},
   {id:"unsup",lvl:"danger",re:[/\b(unsupervised|unattended)\b/,/\bwithout (?:an? )?(?:adult|teacher|supervision|grown-?up|caregiver)s?\b/,/\bno (?:adult|teacher|supervision|grown-?up)s?\b/,/\b(?:left|leave|leaving) (?:the )?(?:children|kids|child|them|toddlers) (?:alone|by themselves|unattended)\b/,/\bwhile (?:the )?(?:teacher|adult)s? (?:is|are) (?:away|gone|busy|out|distracted)\b/,/\b(?:leave|leaving|exit|exiting|wander(?:ing)? (?:off|away) from|go(?:ing)? out of) (?:the )?(?:classroom|playground|fence|building|yard|group|room)\b/,/\balone in the (?:room|classroom|yard|playground)\b/],msg:"Children must always be within sight and reach of an adult."},
-  {id:"mouth",lvl:"danger",custom:function(c){var m=c.match(/\b(taste|tasting|eat|eating|lick|licking|drink|drinking|swallow|sip|put (?:it |them |one |some )?in (?:their |your )?mouths?)\b[^|]{0,50}?\b(paint|glue|soap|dirt|soil|sand|play ?dough|clay|shaving cream|slime|cleaner|detergent|sanitizer|bubble solution|chalk|crayons?|markers?|toothpaste|shampoo|lotion|sunscreen|plants?|leaves|wild berries|mushrooms?|bark|batteries|coins?|rocks?|stones?|pebbles?)\b/);
-    if(!m||/\b(edible|taste-?safe|food[- ]safe|pretend|imagine)\b/.test(c))return null;return "Has children tasting or putting something in their mouths that isn't food. Use only real, safe foods for tasting.";}},
-  {id:"sharp",lvl:"danger",re:[/\b(knife|knives|razors?|blades?|needles?|safety pins?|push ?pins?|straight pins?|thumb ?tacks?|nails|staples?|staple gun|saws?|axe|hatchet|screwdrivers?|chisel|power tools?|sharp (?:objects?|tools?|scissors?|sticks?))\b/],msg:"Uses a sharp tool. Keep these away from children; use safe, blunt tools instead."},
+  {id:"mouth",lvl:"caution",custom:function(c){var m=c.match(/\b(taste|tasting|eat|eating|lick|licking|drink|drinking|swallow|sip|put (?:it |them |one |some )?in (?:their |your )?mouths?)\b[^|]{0,50}?\b(paint|glue|soap|dirt|soil|sand|play ?dough|clay|shaving cream|slime|cleaner|detergent|sanitizer|bubble solution|chalk|crayons?|markers?|toothpaste|shampoo|lotion|sunscreen|plants?|leaves|wild berries|mushrooms?|bark|batteries|coins?|rocks?|stones?|pebbles?)\b/);
+    if(!m||/\b(edible|taste-?safe|food[- ]safe|pretend|imagine|rock candy|candy rocks|candy crystals|sugar crystals)\b/.test(c))return null;return "Tasting or mouthing non-food items isn't safe. Taste only real, taste-safe foods and keep other materials out of mouths.";}},
+  {id:"sharp",lvl:"caution",re:[/\b(knife|knives|razors?|blades?|needles?|safety pins?|push ?pins?|straight pins?|thumb ?tacks?|nails|staples?|staple gun|saws?|axe|hatchet|screwdrivers?|chisel|power tools?|sharp (?:objects?|tools?|scissors?|sticks?))\b/],msg:"Sharp tool: an adult handles it, and children use safe, blunt tools."},
   {id:"scissors",lvl:"caution",custom:function(c){return /\bscissors\b/.test(c)&&!/\b(child[- ]safe|kid[- ]safe|safety|blunt|round[- ]?(?:tip|ended)|preschool|training|plastic)\s+scissors\b/.test(c)?"Use child-safe scissors with an adult close by.":null;}},
-  {id:"run",lvl:"danger",re:[/\brun(?:ning)? with (?:scissors|sticks?|pencils?|crayons?|lollipops?|food|pointy|sharp)\b/],msg:"Children should walk, not run, while carrying pointy or sharp things."},
+  {id:"run",lvl:"caution",re:[/\brun(?:ning)? with (?:scissors|sticks?|pencils?|crayons?|lollipops?|food|pointy|sharp)\b/],msg:"Children should walk, not run, while carrying pointy or sharp things."},
   {id:"rough",lvl:"danger",re:[/\b(?:throw|toss|shoot|aim|kick|swing)\b[^.|]{0,40}\bat (?:each other|a friend|friends|someone|people|faces?|heads?|another child|their (?:friends|classmates))\b/,/\b(?:tackle|tackling|wrestl\w*|punch(?:es|ing)? (?:each other|a friend|friends|someone|people|him|her|them)|pillow fights?|hit(?:ting)? (?:each other|a friend|friends))\b/],msg:"Rough play or throwing at people can hurt someone. Aim at targets, never at children."},
   {id:"bag",lvl:"danger",re:[/\bbags?\b[^.|]{0,30}\b(?:over|on) (?:their|your|the) heads?\b/,/\b(?:over|on) (?:their|your|the) heads? [^.|]{0,20}\bbags?\b/,/\bcover(?:ing)? (?:their|your|the) (?:face|mouth|nose)\b/],msg:"Never put bags or coverings over a child's face or head."},
   {id:"cord",lvl:"danger",re:[/\b(?:string|rope|yarn|ribbon|cord|scarf|lanyard)s?\b[^.|]{0,40}\b(?:around|on) (?:their|your|the) (?:necks?|throats?)\b/],msg:"Strings or cords around a neck can strangle. Skip necklaces and neck ties."},
@@ -1068,11 +1088,11 @@ var SAFE_RE=[
   {id:"choke",lvl:"danger",custom:function(c,age){if(!EATV.test(c))return null;
     var a=c.match(CHOKE_ALWAYS),b=c.match(CHOKE_CUT);if(!a&&!b)return null;
     if(!a&&/\b(quarter|quartered|halved|halves|lengthwise|sliced|cut (?:in|into)|mashed|grated|finely)\b/.test(c))return {lvl:"caution",msg:"Round or firm foods must be cut lengthwise into small pieces for young children. Check that this is done."};
-    return {lvl:age>=5?"caution":"danger",msg:"Has children eating a choking hazard (like grapes, popcorn, nuts, hard candy or hot dogs). Pick a soft, cut-up food or make it pretend."};}},
-  {id:"small",lvl:"danger",custom:function(c,age){
-    if(/\b(put|stick|place) (?:it |them |one |some )?in (?:their |your )?mouths?\b/.test(c)&&!NEGW.test(c))return {lvl:"danger",msg:"Has children putting items in their mouths."};
+    return {lvl:"caution",msg:"Choking risk: serve grapes, hot dogs and similar foods cut lengthwise into small pieces, skip popcorn, nuts and hard candy for young children, and sit beside them while they eat."};}},
+  {id:"small",lvl:"caution",custom:function(c,age){
+    if(/\b(put|stick|place) (?:it |them |one |some )?in (?:their |your )?mouths?\b/.test(c)&&!NEGW.test(c))return {lvl:"caution",msg:"Children may put items in their mouths: stay close and use only large, safe pieces."};
     var d=c.match(SMALLD),s=c.match(SMALLC);
-    if(age<=3&&d&&!(BIGQ.test(c)&&/\b(beads?|buttons?|pom-?poms?|magnets?)\b/.test(d[0])))return {lvl:"danger",msg:"Small items ("+d[0]+") are a choking hazard for children under 4. Use large, safe pieces or leave it out."};
+    if(age<=3&&d&&!(BIGQ.test(c)&&/\b(beads?|buttons?|pom-?poms?|magnets?)\b/.test(d[0])))return {lvl:"caution",msg:"Small items ("+d[0]+") are a choking hazard under age 4: use large pieces and keep them out of mouths."};
     if(age<=3&&s&&!BIGQ.test(c))return {lvl:"caution",msg:"Small loose items ("+s[0]+"). Stay very close and make sure nothing goes in mouths."};
     if(age>=4&&d&&/\b(batteries|magnets?|balloons?)\b/.test(d[0]))return {lvl:"caution",msg:"("+d[0]+") can be a swallowing or choking hazard. Keep a close eye on them."};
     return null;}},
@@ -1094,6 +1114,16 @@ function scanText(a){
   if(!seen.pii){var q=piiFinds(all).filter(function(f){return f.kind!=="sensitive";});if(q.length)out.push({id:"pii",lvl:"danger",msg:"Looks like it contains a child's name or private details. Plans should stay anonymous.",where:"the text",hit:q[0].text});}
   return out;}
 function actSig(a){var s=[a.title,a.summary,a.tip,a.age,SAFEVER].concat(a.materials||[],a.steps||[]).join("\u0001"),h=5381;for(var i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return String(h);}
+// Only these are "never" hazards that make an AI draft get redone. Everything else becomes a short safety note on the activity.
+var HARDSAFE={chem:1,mix:1,fire:1,height:1,unsup:1,bag:1,cord:1,rough:1,hate:1,bad:1,pii:1};
+function addCaveats(a){var f=scanText(a),notes=[],tip=String(a.tip||""),low=tip.toLowerCase();
+  f.forEach(function(x){if(HARDSAFE[x.id]||x.lvl!=="caution")return;
+    if(x.id==="allergy"&&/allerg/.test(low))return;
+    if((x.id==="choke"||x.id==="small")&&/choking|swallow|cut lengthwise|large pieces/.test(low))return;
+    if(notes.indexOf(x.msg)<0&&low.indexOf(x.msg.slice(0,24).toLowerCase())<0)notes.push(x.msg);});
+  if(notes.length)a.tip=(tip+(tip?" ":"")+"\u26A0\uFE0F Safety: "+notes.slice(0,2).join(" ")).trim().slice(0,520);
+  var fl=scanText(a);a.flags=fl;a.sig=actSig(a);if(!fl.some(function(x){return x.lvl==="danger";}))a.rev=a.sig;
+  return notes.length;}
 function flagLvl(a){if(!a||!a.flags||!a.flags.length)return "";if(a.rev===a.sig&&!a.flags.some(function(f){return f.id==="hate";}))return "";return a.flags.some(function(f){return f.lvl==="danger";})?"danger":"caution";}
 function flagTip(a){return (a.flags||[]).map(function(f){return (f.lvl==="danger"?"⛔ ":"⚠️ ")+f.msg;}).join("  ");}
 // Background scanner: re-checks every activity whenever plans change and on a steady timer. Unchanged activities are skipped, so it is very light.
