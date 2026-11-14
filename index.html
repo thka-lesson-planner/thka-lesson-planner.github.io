@@ -134,6 +134,8 @@ body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .lesson h3{margin:12px 0 2px;color:var(--leaf)}.lesson h4{margin:14px 0 4px;color:var(--ink)}
 .sll a,.sll2 a{color:#2B7A4B;font-weight:700}.sll{margin-top:4px;font-size:13px}.sll2{padding-left:20px}
 .aitag{background:#FFE9A8;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:700}
+#msg.cancelled{background:#FFF1D6;border:2px solid #F0C36A;border-radius:12px;padding:8px 12px;color:#7A4B00}
+#stop:disabled{opacity:.7;cursor:wait}
 </style>
 </head>
 <body>
@@ -357,12 +359,13 @@ async function edAI(){
   if(cmd){var gg=await guardCheck(cmd);cmd=gg.text;$("ef-ai").value=cmd;if(!gg.ok){m.textContent="";return;}}
   AI.busy=true;AI.stop=false;$("ef-go").disabled=true;busyUI(true);$("go").disabled=$("mo").disabled=true;$("ef-stop").hidden=false;
   try{
-    var eng=await ensureAI();
+    var eng=await untilCancel(ensureAI());
+    if(AI.stop){m.textContent="\u23F9\uFE0F Cancelled. Nothing was changed.";return;}
     if(!eng.ok){m.textContent=eng.note;return;}
     AI.tag="Asking the AI";
     var cur={title:x.title,summary:x.summary,materials:x.materials,steps:x.steps,tip:x.tip,cost:x.cost,std:x.std,slot:x.slot,theme:plan(E.k).theme||x.theme||""};
     var d=await rewriteAct(cur,"The teacher's command: "+cmd+". Keep what the teacher wrote unless the command changes it.",age);
-    if(AI.stop){m.textContent="Stopped.";return;}
+    if(AI.stop){m.textContent="\u23F9\uFE0F Cancelled. Nothing was changed.";return;}
     if(!d){m.textContent="The AI’s answer couldn’t be read. Try rephrasing your command.";return;}
     var unsafe=scanText({title:d.title,summary:d.summary,materials:d.materials,steps:d.steps,tip:d.ageTip,age:age}).filter(function(f){return f.lvl==="danger";});
     if(unsafe.length&&!/safety|safe/i.test(cmd)){m.textContent="The AI’s rewrite had a safety problem ("+unsafe[0].msg+"), so your version was kept. Try rephrasing.";return;}
@@ -370,7 +373,7 @@ async function edAI(){
     set("ef-t",d.title,70);set("ef-s",d.summary,400);set("ef-m",ln(d.materials),600);set("ef-p",ln(d.steps),1500);set("ef-i",tcs.tip,300);set("ef-c",tcs.cost,40);
     autoAll();m.textContent="Updated! Read it over, change anything you like, then press Save."+(eng.note?" "+eng.note:"");
   }catch(e){m.textContent="Couldn’t finish: "+(e&&e.message?e.message:e);}
-  finally{AI.tag="";AI.busy=false;$("ef-go").disabled=false;busyUI(false);$("ef-stop").hidden=true;}}
+  finally{AI.tag="";AI.busy=false;var gb=$("ef-go");if(gb)gb.disabled=false;busyUI(false);var sb=$("ef-stop");if(sb){sb.hidden=true;sb.disabled=false;if(sb.dataset.t)sb.textContent=sb.dataset.t;}}}
 function moveTo(k,id,nk,nd,nr){var p=plan(k),a=p.acts.filter(function(x){return x.id===id;})[0];if(!a)return;
   p.acts=p.acts.filter(function(x){return x!==a;});a.day=nd;if(nr&&nr!==a.slot)setSlot(a,nr);
   a.theme=themeFor(plan(nk),a.theme);plan(nk).acts.push(a);V.wk=nk;save();render();}
@@ -634,14 +637,19 @@ var CMORDER=["light","balanced","heavy"];
 // Fast mode: WebLLM on the graphics card (optional, strong computers only).
 var WEBLLM_URL="https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.83/+esm";
 var WM={id:"Qwen2.5-1.5B-Instruct-q4f16_1-MLC"};
-var AI={busy:false,stop:false,gpu:null,active:null,loading:null,cpu:null,cpuKey:null,wmod:null,web:null,webMod:null,tag:""};
+var AI={busy:false,stop:false,gpu:null,active:null,loading:null,cpu:null,cpuKey:null,wmod:null,web:null,webMod:null,tag:"",cur:null,pending:null,waiters:[],primed:null,lastSec:0};
 var SYS2="You are a warm, creative early-childhood teacher at Treehouse Kids Academy in Idaho. You rewrite classroom activities so they are cute, memorable, safe and cheap. Keep everything SHORT.\n"+
 "Answer in EXACTLY this format, one label per line, with nothing else:\n"+
 "TITLE: cute title, 6 words or fewer\nSUMMARY: one short sentence\nMATERIALS: item; item; item\nSTEPS: step | step | step\nAGE TIP: one short sentence on adapting for younger or older children, never about money\nCOST: like About $3\nSTANDARDS: two or three codes from LL, MA, SC, PH, CA, SE, AL\n"+
 "(LL language/literacy, MA math, SC science, PH physical, CA creative arts, SE social-emotional, AL approaches to learning. Pick what the activity really teaches.)\n"+
 "Rules: match the child's age; cheap household or recycled items only; exactly 3 short steps of under 15 words each; under age 3 no small parts or choking hazards; no children's names.\n"+
 "SAFETY: an adult is always with the children. Never include fire or heat, sharp tools, chemicals or cleaners, jumping or climbing from heights, deep water, bags or strings near faces, or children eating grapes, nuts, popcorn, hard candy or hot dogs. Use only safe, taste-safe or pretend materials.";
-function say(t){$("msg").textContent=t;var e=$("edmsg");if(e)e.textContent=t;var f=$("sg-msg");if(f)f.textContent=t;}
+function say(t){var m=$("msg");m.textContent=t;m.classList.toggle("cancelled",String(t).indexOf("\u23F9")===0);var e=$("edmsg");if(e)e.textContent=t;var f=$("sg-msg");if(f)f.textContent=t;}
+// Cancel feedback: a highlighted "Cancelled" message that stays until the next message
+function noteCancel(t){say("\u23F9\uFE0F "+t);}
+// Wait for a promise, but give up right away if the teacher presses Stop (the work carries on quietly in the background)
+function untilCancel(p){return new Promise(function(res){var done=false,w=function(){if(!done){done=true;res({ok:false,cancelled:true,note:""});}};AI.waiters.push(w);
+  p.then(function(v){if(!done){done=true;res(v);}},function(){if(!done){done=true;res({ok:false,note:""});}});});}
 function status(ok,t){var s=$("st");s.className="st"+(ok===true?" ok":ok===false?" no":"");s.textContent=t;}
 function budget(){var b=parseFloat($("bud").value);return b>0?b:45;}
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
@@ -700,7 +708,7 @@ async function webLoad(){
 async function cpuLoad(key){
   var m=CM[key];
   if(AI.cpu&&AI.cpuKey===key)return;
-  if(AI.cpu){try{await AI.cpu.exit();}catch(e){}AI.cpu=null;AI.cpuKey=null;}
+  if(AI.cpu){AI.pending=null;AI.primed=null;try{await AI.cpu.exit();}catch(e){}AI.cpu=null;AI.cpuKey=null;}
   setProg(0,"Loading the AI engine…");
   if(!AI.wmod){try{AI.wmod=await import(WLLAMA_BASE+"index.js");}catch(e){setProg(null,"");throw e;}}
   var paths={"single-thread/wllama.wasm":WLLAMA_BASE+"single-thread/wllama.wasm","multi-thread/wllama.wasm":WLLAMA_BASE+"multi-thread/wllama.wasm"};
@@ -714,6 +722,7 @@ async function cpuLoad(key){
         if(!p||!p.total)return;var pc=Math.round(100*p.loaded/p.total);
         setProg(pc,p.loaded>=p.total?"Starting the AI helper…":"Downloading the AI helper: "+mbs(p.loaded)+" MB of "+mbs(p.total)+" MB. You can keep planning while this downloads.");}};
       if(attempt===2)cfg.n_threads=1;
+      else if(self.crossOriginIsolated){var hc=navigator.hardwareConcurrency||4;cfg.n_threads=Math.max(2,Math.min(Math.round(hc*0.75),8));}
       await w.loadModelFromUrl(m.url,cfg);
       AI.cpu=w;AI.cpuKey=key;write("tka:gguf:"+key,true);setProg(null,"");return;
     }catch(e){lastErr=e;try{if(w)await w.exit();}catch(x){}
@@ -738,7 +747,7 @@ async function doEnsure(){
   }
   var key=curModel(),first=key,why="";
   while(true){
-    try{await cpuLoad(key);AI.active="cpu";
+    try{await cpuLoad(key);AI.active="cpu";setTimeout(primeCache,300);
       var nt=(key!==first)?"The "+MODELN[first]+" size was too big for this device ("+why+"), so the "+MODELN[key]+" size was used.":"";
       return {ok:true,note:(note?note+" ":"")+nt};}
     catch(err){var ix=CMORDER.indexOf(key);
@@ -748,19 +757,28 @@ async function doEnsure(){
 // Generate text with whichever engine is loaded.
 async function aiGen(msgs,o){
   o=o||{};var max=o.max||420,temp=o.temp==null?0.7:o.temp,acc="";
-  if(AI.active==="gpu"){
+  if(AI.active==="gpu"){AI.cur={c:false,fire:null};
     try{var stream=await AI.web.chat.completions.create({messages:msgs,stream:true,temperature:temp,top_p:0.9,max_tokens:max});
       for await(var ch of stream){var t=ch.choices&&ch.choices[0]&&ch.choices[0].delta&&ch.choices[0].delta.content;
-        if(t){acc+=t;if(o.onText)o.onText(acc);}if(AI.stop){try{AI.web.interruptGenerate();}catch(e){}break;}}
+        if(t){acc+=t;if(o.onText)o.onText(acc);}if(AI.stop||(AI.cur&&AI.cur.c)){try{AI.web.interruptGenerate();}catch(e){}break;}}
     }catch(err){if(!AI.stop){write("tka:gpubad",true);AI.web=null;AI.active=null;switchCpu();
         throw new Error("Fast mode stopped working ("+friendly(err)+"). Reliable mode is selected now, so just try again.");}}
     return acc;}
+  var tok={c:false,fire:null};AI.cur=tok;
+  if(AI.pending){var wt=new Promise(function(r){tok.fire=r;}),to=new Promise(function(r){setTimeout(r,25000);});
+    try{await Promise.race([AI.pending,wt,to]);}catch(e){}
+    if(tok.c||AI.stop){AI.cur=null;return "";}}
   var prompt=msgs.map(function(m){return "<|im_start|>"+m.role+"\n"+m.content+"<|im_end|>\n";}).join("")+"<|im_start|>assistant\n"+(AI.cpuKey&&CM[AI.cpuKey]&&CM[AI.cpuKey].nothink?"<think>\n\n</think>\n\n":"");
-  var nTok=0,tFirst=0;
-  var res=await AI.cpu.createCompletion(prompt,{nPredict:max,useCache:true,sampling:{temp:temp,top_k:40,top_p:0.9,penalty_repeat:1.1},
-    onNewToken:function(tok,piece,text,opt){acc=text;if(!tFirst)tFirst=Date.now();nTok++;
-      if(AI.stop||text.indexOf("<|im_end|>")>=0||text.indexOf("<|endoftext|>")>=0){try{opt.abortSignal();}catch(e){}}
-      if(o.onText)o.onText(text);}});
+  var nTok=0,tFirst=0,cancelP=new Promise(function(r){tok.fire=function(){r("__cancel__");};});
+  var job=AI.cpu.createCompletion(prompt,{nPredict:max,useCache:true,sampling:{temp:temp,top_k:40,top_p:0.9,penalty_repeat:1.1},
+    onNewToken:function(t,piece,text,opt){acc=text;if(!tFirst)tFirst=Date.now();nTok++;
+      var ended=text.indexOf("<|im_end|>")>=0||text.indexOf("<|endoftext|>")>=0;
+      if(tok.c||AI.stop||ended||(o.abortIf&&nTok%16===0&&o.abortIf(text))){try{opt.abortSignal();}catch(e){}}
+      if(!tok.c&&o.onText)o.onText(text);}});
+  AI.pending=job.then(function(){},function(){});
+  var res=await Promise.race([job,cancelP]);
+  if(res==="__cancel__"){AI.cur=null;return acc;}
+  AI.cur=null;
   if(nTok>12&&tFirst){var dt=(Date.now()-tFirst)/1000;if(dt>0.5){var v=nTok/dt;AI.tps=AI.tps?(AI.tps+v)/2:v;}}
   return String(acc||res||"");}
 // ---------- Labeled-line format (easy for small models) ----------
@@ -792,7 +810,7 @@ async function rewriteAct(a,instr,age){
   return AI.stop?null:parseLab(txt);}
 // If this device runs the AI slowly, quietly move to the faster Light size (automatic mode only) and remember it.
 async function speedCheck(){
-  if(AI.active!=="cpu"||!AI.tps||AI.tps>=4||$("cm").value!=="auto"||curModel()==="light")return;
+  if(AI.active!=="cpu"||!AI.tps||AI.tps>=6||$("cm").value!=="auto"||curModel()==="light")return;
   write("tka:cap","light");AI.tps=0;
   say("\u2728 This device is running the AI slowly, so I\u2019m switching to the faster Light size for the rest\u2026");
   var r=await ensureAI();
@@ -800,7 +818,12 @@ async function speedCheck(){
   else{write("tka:cap","");await ensureAI();}}
 var MAGIC=["gathering sparkles","whispering to the story fairies","stirring the idea cauldron","asking the imagination owls","sprinkling pixie dust","hunting for a hidden surprise"];
 function magic(sec){return MAGIC[Math.floor(sec/5)%MAGIC.length];}
-function busyUI(b){$("go").disabled=$("pw").disabled=$("mo").disabled=$("pm").disabled=b;$("stop").hidden=!b;}
+function busyUI(b){$("go").disabled=$("pw").disabled=$("mo").disabled=$("pm").disabled=b;var s=$("stop");if(!s.dataset.t)s.dataset.t=s.textContent;s.hidden=!b;s.disabled=false;s.textContent=s.dataset.t;
+  if(!b)setTimeout(primeCache,400);}
+// Warm the AI's memory of the long instructions once, so each activity only has to read the short new part
+function primeCache(){if(AI.busy||AI.active!=="cpu"||!AI.cpu||typeof SYSG==="undefined")return;
+  var pre="<|im_start|>system\n"+SYSG+"<|im_end|>\n<|im_start|>user\n";
+  try{AI.pending=AI.cpu.createCompletion(pre,{nPredict:1,useCache:true,sampling:{temp:0}}).then(function(){},function(){});}catch(e){}}
 // ---------- Helpers shared by the planners ----------
 var GROUPS={LL:["Song & Fingerplays","Story","Literacy"],CA:["Art","Music & Movement"],MA:["Math"],SC:["Science"],PH:["Gross Motor Skill"]};
 function shuf(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;}return a;}
@@ -833,15 +856,21 @@ var SYSG="You are a warm, wildly imaginative early-childhood teacher at Treehous
 "TITLE: Puddle Detectives\nSUMMARY: Little detectives splash and squeeze to solve the case of the vanished puddle.\nMATERIALS: shallow tray; water; sponges; chalk\nSTEPS: Give each detective a sponge badge and announce a puddle has vanished | Splash the tray and squeeze sponges to rescue the puddle | Chalk a circle where it used to be and cheer for the solved case\nAGE TIP: Let younger children just splash while older ones count their squeezes.\nCOST: About $2\nSTANDARDS: SC, PH, SE\n"+
 "Rules: match the child's age; cheap household or recycled items only; exactly 3 short steps of under 15 words each; under age 3 no small parts or choking hazards; no children's names.\n"+
 "SAFETY: an adult is always with the children. Never include fire or heat, sharp tools, chemicals or cleaners, jumping or climbing from heights, deep water, bags or strings near faces, or children eating grapes, nuts, popcorn, hard candy or hot dogs. Use only safe, taste-safe or pretend materials.";
+// Stops a draft the moment it is clearly going wrong, so no time is wasted finishing a bad one
+function earlyWhy(s,age){
+  if(s.length>60&&!/TITLE\s*:/i.test(s))return "its answer was not in the right format";
+  if(/(\bitem; item|\bcute title\b|\bone short sentence\b|<[a-z]|\[[a-z ]+\])/i.test(s))return "it copied the format instructions instead of writing a real activity";
+  var f=scanText({title:"",summary:String(s).replace(/\n/g,". "),materials:[],steps:[],tip:"",age:age}).filter(function(x){return x.lvl==="danger";});
+  return f.length?"it is unsafe: "+f[0].msg:"";}
 async function genAct(idea,slot,theme,age,avoid,others){
-  var base="Today is "+todayStr()+".\nTeacher's idea: \u201C"+idea+"\u201D\nClass age: "+AGEL[age]+"\nAge guidance: "+AGEG[age]+"\nMonthly theme: "+(theme||"none")+"\nPlanner row: "+slot+" ("+(ROWHINT[slot]||"a classroom activity")+")\nWeekly supply budget: $"+budget()+" for all five weekly activities, so keep supplies cheap.\n"+
-    (avoid&&avoid.length?"Already planned this week (make something clearly different): "+avoid.join("; ")+"\n":"")+"\nInvent the activity now in exactly the labeled format.";
-  var msgs=[{role:"system",content:SYSG},{role:"user",content:base}],temps=[0.8,0.85,0.9];
-  for(var t=0;t<3&&!AI.stop;t++){
-    var t0=Date.now(),retry=t?" (making it even better)":"";
-    var txt=await aiGen(msgs,{max:290,temp:temps[t],onText:function(s){var sec=Math.round((Date.now()-t0)/1000);say((AI.tag||"\u2728 Imagining")+retry+" \u2014 "+magic(sec)+"\u2026 "+sec+"s");}});
+  var base="Teacher's idea: \u201C"+idea+"\u201D\nClass age: "+AGEL[age]+". "+AGEG[age]+"\nMonthly theme: "+(theme||"none")+"\nPlanner row: "+slot+" ("+(ROWHINT[slot]||"a classroom activity")+")\n"+
+    (avoid&&avoid.length?"Already planned this week (make something clearly different): "+avoid.join("; ")+"\n":"")+"Invent the activity now in exactly the labeled format.";
+  var msgs=[{role:"system",content:SYSG},{role:"user",content:base}],temps=[0.8,0.9];
+  for(var t=0;t<2&&!AI.stop;t++){
+    var t0=Date.now(),retry=t?" (one more try)":"";
+    var txt=await aiGen(msgs,{max:200,temp:temps[t],abortIf:function(s){return !!earlyWhy(s,age);},onText:function(s){var sec=Math.round((Date.now()-t0)/1000);say((AI.tag||"\u2728 Imagining")+retry+" \u2014 "+magic(sec)+"\u2026 "+sec+"s");}});
     if(AI.stop)return null;
-    var d=parseLab(txt),why=d?draftIssues(d,{idea:idea,age:age,others:others||[],loose:t>=2}):["its answer was not in the right format"];
+    var ew=earlyWhy(txt,age),d=ew?null:parseLab(txt),why=ew?[ew]:(d?draftIssues(d,{idea:idea,age:age,others:others||[],loose:t>=1}):["its answer was not in the right format"]);
     if(!why.length)return d;
     AI.rejected=(AI.rejected||0)+1;
     msgs=[msgs[0],{role:"user",content:base+"\nYour last try was rejected because: "+why.join("; ")+". Write a different, safe, specific activity that fixes this."}];}
@@ -875,15 +904,15 @@ async function draft(){
     var eng={ok:false,note:""},a=null;
     if($("eng").value!=="bank"){
       say(engReady()?"✨ Imagining your activity…":"✨ Waking up the AI helper… I’ll start the moment it’s ready.");
-      eng=await ensureAI();
+      var tStart=Date.now();eng=await untilCancel(ensureAI());
       if(eng.ok&&!AI.stop){AI.tag="✨ Imagining your activity";
         var d=await genAct(text,slot,th.t,age,weekTitles(V.wk),plan(V.wk).acts);
-        if(d){a=makeAct(d,text,age,only,slot,th.t);a.month=th.m;}}
-      if(AI.stop){say("Stopped. Nothing was added.");return;}}
+        if(d){a=makeAct(d,text,age,only,slot,th.t);a.month=th.m;AI.lastSec=Math.round((Date.now()-tStart)/1000);}}
+      if(AI.stop){noteCancel("Cancelled. Nothing was added."+(AI.loading?" The AI helper keeps getting ready in the background, so it will be quicker next time.":""));return;}}
     var fromAI=!!a;
     if(!a){var bd=bankAct(th.t,slot,age,text,null);a=toAct(bd,text,age,only,slotSel);a.theme=th.t;a.month=th.m;}
     var r=place(a,th.m),where=MN[th.m]+" "+yearOf(th.m)+" • "+a.theme+", "+DAYS[r.day]+", "+a.slot;
-    if(fromAI){$("idea").value="";say("Ta-da! “"+a.title+"” is in "+where+". Click it to see the steps, and review it for safety."+(eng.note?" "+eng.note:""));}
+    if(fromAI){$("idea").value="";say("Ta-da! “"+a.title+"” is in "+where+". Click it to see the steps, and review it for safety."+(eng.note?" "+eng.note:"")+(AI.lastSec?" (Took "+AI.lastSec+" seconds.)":""));if(AI.lastSec>40)await speedCheck();}
     else if($("eng").value==="bank")say("Added “"+a.title+"” ("+where+") from the built-in bank. Click it to see the steps.");
     else say("Added “"+a.title+"” ("+where+") from the built-in bank, because "+(eng.ok?"the AI couldn’t make a safe, creative version this time. Press Plan it! again to retry":whyNot(eng,"the AI helper isn’t ready yet"))+". You can edit it and use Ask AI.");
   }catch(e){say("Couldn’t finish: "+(e&&e.message?e.message:e));}
@@ -907,7 +936,7 @@ async function planWeek(){
     var rows=pickRows(open.length,use,idea),avoid=weekTitles(k);
     if($("eng").value!=="bank"){
       say(engReady()?"✨ Imagining your week…":"✨ Waking up the AI helper… I’ll start the moment it’s ready.");
-      eng=await ensureAI();}
+      eng=await untilCancel(ensureAI());}
     for(var i=0;i<open.length&&!AI.stop;i++){
       var dd=open[i],dt2=pd(k);dt2.setDate(dt2.getDate()+dd);
       var a=null,dth=ths.length?ths[i%ths.length]:th.t;
@@ -919,7 +948,7 @@ async function planWeek(){
       if(a){a.month=dt2.getMonth();a.day=dd;p.acts.push(a);avoid.push(a.title);made++;save();V.view="plan";render();if(made===1&&i<open.length-1)await speedCheck();}}
     if(typed&&made){$("idea").value="";}
     var wk="the week of "+fmtD(k,0);
-    if(AI.stop)say("Stopped. "+made+" activit"+(made===1?"y":"ies")+" added to "+wk+".");
+    if(AI.stop)noteCancel("Cancelled. "+(made?made+" activit"+(made===1?"y was":"ies were")+" already added to "+wk+" and kept.":"Nothing was added to "+wk+"."));
     else if(fromBank)say("Added "+made+" starter activities to "+wk+" from the built-in bank, because "+whyNot(eng,"the AI helper isn’t switched on")+". Press “Plan the week” again once the AI is ready for fresh ideas.");
     else say("Ta-da! "+made+" fresh activit"+(made===1?"y":"ies")+" imagined for "+wk+", all built around “"+idea.slice(0,60)+"”."+(failed?" "+failed+" day"+(failed===1?" was":"s were")+" filled with a starter idea because the AI couldn’t make a safe, creative version in time. Press the ✨ wand to try again.":"")+" Review everything for safety and cost."+(eng.note?" "+eng.note:"")+(AI.speedNote?" "+AI.speedNote:""));
   }catch(e){say("Added "+made+" activities, then stopped: "+(e&&e.message?e.message:e));}
@@ -939,7 +968,7 @@ async function polishLoop(list,age,focus){
   return {done:done,total:todo.length,left:list.filter(function(a){return !a.pol;}).length};}
 function polMsg(r,eng){
   if(!r.done&&!AI.stop)return "The magic fizzled this time, so the starter ideas were kept. Press the wand again to retry."+(eng&&eng.note?" "+eng.note:"");
-  return (AI.stop?"Stopped. ":"Ta-da! ")+r.done+" activit"+(r.done===1?"y just got":"ies just got")+" a sprinkle of imagination ✨"+(r.left?" "+r.left+" more are still waiting for their turn.":"")+" Peek at them, then check for safety and cost."+(eng&&eng.note?" "+eng.note:"")+(AI.speedNote?" "+AI.speedNote:"");}
+  return (AI.stop?"\u23F9\uFE0F Cancelled. ":"Ta-da! ")+r.done+" activit"+(r.done===1?"y just got":"ies just got")+" a sprinkle of imagination ✨"+(r.left?" "+r.left+" more are still waiting for their turn.":"")+" Peek at them, then check for safety and cost."+(eng&&eng.note?" "+eng.note:"")+(AI.speedNote?" "+AI.speedNote:"");}
 function polScope(m){
   var sc=$("pol").value,out=[];
   var add=function(k){plan(k).acts.forEach(function(a){if(a.bk&&!a.pol&&actDate(k,a)>=today0())out.push({a:a,d:actDate(k,a)});});};
@@ -975,8 +1004,8 @@ async function monthPlan(){
     if($("eng").value==="bank"){say(base+"Check the By Standard tab for coverage, then click any activity to edit it.");return;}
     var first=made.filter(function(a){return plan(firstK).acts.indexOf(a)>=0;});
     say(base+(engReady()?"Now sprinkling some AI imagination on the first week…":"Waking up the AI helper, then I’ll sprinkle some imagination on the first week…")+" Press Stop any time.");
-    var eng=await ensureAI();
-    if(!eng.ok){say(base+eng.note);return;}
+    var eng=await untilCancel(ensureAI());
+    if(!eng.ok){if(AI.stop){noteCancel("Cancelled. "+base+"The AI step was skipped.");return;}say(base+eng.note);return;}
     var r=await polishLoop(first,age,focus);
     var rest=made.filter(function(a){return !a.pol;}).length;
     say(base+polMsg(r,eng)+(rest?" The other weeks stay as starter ideas until you press “Make next week more imaginative”.":""));
@@ -995,8 +1024,8 @@ async function polishMore(){
   AI.speedNote="";AI.busy=true;AI.stop=false;busyUI(true);
   try{
     say(engReady()?"✨ Sprinkling imagination on "+list.length+" activit"+(list.length===1?"y":"ies")+"…":"✨ Waking up the AI helper… then I’ll sprinkle imagination on "+list.length+" activit"+(list.length===1?"y":"ies")+".");
-    var eng=await ensureAI();
-    if(!eng.ok){say(eng.note);return;}
+    var eng=await untilCancel(ensureAI());
+    if(!eng.ok){if(AI.stop){noteCancel("Cancelled. Nothing was changed.");return;}say(eng.note);return;}
     var r=await polishLoop(list,age,focus);
     say(polMsg(r,eng));
   }catch(e){say("The AI step stopped: "+(e&&e.message?e.message:e));}
@@ -1430,7 +1459,7 @@ function buildLesson(items,age,q){
   return {html:h,print:pr,signs:signs};}
 function signLessonCard(){
   var h="<section class=\"card\"><h2>🎓 Ask for a sign lesson</h2><p class=\"note\">Type what you want to teach: words, letters, or phrases. Try “colors”, “please, thank you, and the letter B”, or “good morning”. Common signs come from a built-in library, so lessons appear instantly.</p>";
-  h+="<textarea id=\"sl-q\" maxlength=\"200\" style=\"min-height:64px\" placeholder=\"What should we learn to sign?\">"+esc(SL.q)+"</textarea><div class=\"btns\"><button class=\"btn\" id=\"sl-go\" type=\"button\">Make my lesson</button></div><div id=\"sl-msg\" class=\"msg\" aria-live=\"polite\"></div>";
+  h+="<textarea id=\"sl-q\" maxlength=\"200\" style=\"min-height:64px\" placeholder=\"What should we learn to sign?\">"+esc(SL.q)+"</textarea><div class=\"btns\"><button class=\"btn\" id=\"sl-go\" type=\"button\">Make my lesson</button><button class=\"btn alt\" id=\"sl-stop\" type=\"button\" hidden>Stop</button></div><div id=\"sl-msg\" class=\"msg\" aria-live=\"polite\"></div>";
   if(SL.res)h+=SL.res.html+"<div class=\"btns\"><button class=\"btn alt\" id=\"sl-add\" type=\"button\">Add these to this week’s signs</button><button class=\"btn alt\" id=\"sl-print\" type=\"button\">&#128424; Print this lesson</button></div>";
   return h+"</section>";}
 async function signLesson(){
@@ -1444,9 +1473,10 @@ async function signLesson(){
     if(!items.length){msg("I couldn’t find a word, letter, or phrase in that. Try something like “the letters A and B” or “happy, sad, mad”.");return;}
     var unk=items.filter(function(i){return !i.e;}).slice(0,3),note="";
     if(unk.length&&$("eng").value!=="bank"){
-      msg("✨ Checking the signs that aren’t in my library…");AI.busy=true;AI.stop=false;busyUI(true);
-      try{var eng=await ensureAI();
-        if(eng.ok){AI.tag="✨ Looking up signs";
+      msg("✨ Checking the signs that aren’t in my library…");AI.busy=true;AI.stop=false;busyUI(true);var slb=$("sl-stop");if(slb){slb.hidden=false;slb.disabled=false;}
+      try{var eng=await untilCancel(ensureAI());
+        if(AI.stop)note="\u23F9\uFE0F Cancelled the AI lookup, so here is the lesson with the links only. ";
+        else if(eng.ok){AI.tag="✨ Looking up signs";
           var msgs=[{role:"system",content:"You are an early-childhood teacher who knows basic American Sign Language (ASL). Only describe standard ASL signs you are confident about, in plain short words (handshape, where, movement). If you are not sure about a word, write UNSURE for it. Reply with one line per request, exactly: SIGN: word | how to make it. For a phrase, list the signs in order."},
             {role:"user",content:"Describe how to sign: "+unk.map(function(i){return i.name;}).join("; ")}];
           var txt=await aiGen(msgs,{max:300,temp:0.2,onText:function(){msg("✨ Looking up signs…");}});
@@ -1455,7 +1485,7 @@ async function signLesson(){
             if(/unsure|not sure|unknown/i.test(how))return;
             unk.forEach(function(i){if(!i.ai&&(w===i.name.toLowerCase()||w.indexOf(i.name.toLowerCase())>=0||i.name.toLowerCase().indexOf(w)>=0)){i.ai=true;i.how=how;}});});}
         else note=eng.note||"";}
-      finally{AI.tag="";AI.busy=false;busyUI(false);}}
+      finally{AI.tag="";AI.busy=false;busyUI(false);var slb2=$("sl-stop");if(slb2){slb2.hidden=true;slb2.disabled=false;if(slb2.dataset.t)slb2.textContent=slb2.dataset.t;}}}
     SL.res=buildLesson(items,age,q);renderSign();
     var m2=$("sl-msg");if(m2)m2.textContent="Here’s your lesson! "+(items.some(function(i){return !i.e&&!i.ai;})?"A few signs weren’t in my library, so use the links to look them up. ":"")+note;
   }catch(e){msg("Couldn’t make that lesson: "+(e&&e.message?e.message:e));}
@@ -1545,20 +1575,21 @@ async function signAI(){
   if(!engReady()&&!engCached()){fallback("The AI helper isn’t set up yet.");return;}
   AI.busy=true;AI.stop=false;busyUI(true);$("sg-go").disabled=true;$("sg-stop").hidden=false;
   try{
-    var eng=await ensureAI();
+    var eng=await untilCancel(ensureAI());
+    if(AI.stop){$("sg-msg").textContent="\u23F9\uFE0F Cancelled. Nothing was added.";return;}
     if(!eng.ok){fallback(eng.note);return;}
     AI.tag="Finding signs";
     var have=(p.signs||[]).map(function(x){return x.w;}).join(", ")||"none";
     var msgs=[{role:"system",content:"You are an early-childhood teacher who knows basic American Sign Language (ASL). Only suggest common, standard ASL signs you are confident about, and describe each in plain, short words a teacher can follow. Answer with exactly four lines in this format and nothing else:\nSIGN: word | how to make the sign"},
       {role:"user",content:"Today is "+todayStr()+". Suggest four simple ASL signs for the weekly theme “"+th+"” for "+AGEL[age]+". Signs already planned (do not repeat): "+have+"."}];
     var t0=Date.now(),txt=await aiGen(msgs,{max:300,temp:0.5,onText:function(t){say("Finding signs… "+Math.round((Date.now()-t0)/1000)+"s");}});
-    if(AI.stop){$("sg-msg").textContent="Stopped.";return;}
+    if(AI.stop){$("sg-msg").textContent="\u23F9\uFE0F Cancelled. Nothing was added.";return;}
     var out=[];String(txt).split(/\r?\n/).forEach(function(line){var mm=line.match(/SIGN\s*:\s*([^|]+)\|\s*(.+)$/i);
       if(mm){var w=mm[1].replace(/[*_`"]/g,"").trim().slice(0,30),h=mm[2].replace(/[*_`]/g,"").trim().slice(0,200);if(w&&h&&out.length<5)out.push({w:w,how:h});}});
     if(!out.length){fallback("The AI’s answer couldn’t be read.");return;}
     SG.sug=out;renderSign();$("sg-msg").textContent="Here are some ideas. Check each one, then add the ones you like."+(eng.note?" "+eng.note:"");
   }catch(e){fallback("Couldn’t finish ("+(e&&e.message?e.message:e)+").");}
-  finally{AI.tag="";AI.busy=false;busyUI(false);var g=$("sg-go");if(g)g.disabled=false;var st=$("sg-stop");if(st)st.hidden=true;}}
+  finally{AI.tag="";AI.busy=false;busyUI(false);var g=$("sg-go");if(g)g.disabled=false;var st=$("sg-stop");if(st){st.hidden=true;st.disabled=false;if(st.dataset.t)st.textContent=st.dataset.t;}}}
 function setPg(pg){V.pg=pg;$("pg-plan").hidden=pg!=="plan";$("pg-sign").hidden=pg!=="sign";
   Array.prototype.forEach.call(document.querySelectorAll(".navb"),function(b){b.classList.toggle("on",b.dataset.pg===pg);});
   if(pg==="sign")renderSign();else render();}
@@ -1575,7 +1606,7 @@ document.addEventListener("click",function(e){
   else if(sa){var q=SG.sug[+sa.dataset.sgs];if(q){addSign(q.w,q.how);SG.sug.splice(+sa.dataset.sgs,1);renderSign();}}
   else if(sl){var r=SIGNS[+sl.dataset.sgl];addSign(r[0],r[2]);renderSign();}
   else if(t.closest("#sg-ca")){(async function(){if(!(await guardFields(["sg-cw","sg-ch"])))return;addSign($("sg-cw").value,$("sg-ch").value);renderSign();})();}
-  else if(t.closest("#sl-go"))signLesson();else if(t.closest("#sl-add"))slAddAll();else if(t.closest("#sl-print"))slPrint();
+  else if(t.closest("#sl-stop"))stopAI();else if(t.closest("#sl-go"))signLesson();else if(t.closest("#sl-add"))slAddAll();else if(t.closest("#sl-print"))slPrint();
   else if(t.closest("#sg-go"))signAI();
   else if(t.closest("#sg-stop"))stopAI();
 });
@@ -1589,7 +1620,14 @@ document.addEventListener("dragstart",function(e){var t=e.target.closest&&e.targ
 document.addEventListener("dragover",function(e){if(e.target.closest&&e.target.closest("[data-drop]"))e.preventDefault();});
 document.addEventListener("drop",function(e){var t=e.target.closest&&e.target.closest("[data-drop]");if(!t||!e.dataTransfer)return;e.preventDefault();var q=e.dataTransfer.getData("text/plain").split("|");if(q.length===2)moveTo(q[0],q[1],t.dataset.k,+t.dataset.d,t.dataset.r||null);});
 $("go").onclick=draft;
-function stopAI(){AI.stop=true;try{if(AI.web&&AI.web.interruptGenerate)AI.web.interruptGenerate();}catch(e){}}
+function stopAI(){
+  if(!AI.busy)return;
+  AI.stop=true;
+  if(AI.cur){AI.cur.c=true;try{if(AI.cur.fire)AI.cur.fire();}catch(e){}}
+  try{if(AI.web&&AI.web.interruptGenerate)AI.web.interruptGenerate();}catch(e){}
+  var w=AI.waiters;AI.waiters=[];w.forEach(function(f){try{f();}catch(e){}});
+  ["stop","ef-stop","sg-stop","sl-stop"].forEach(function(id){var b=$(id);if(b&&!b.hidden){b.disabled=true;if(b.dataset.t===undefined)b.dataset.t=b.textContent;b.textContent="\u23F9\uFE0F Stopping\u2026";}});
+  say("\u23F9\uFE0F Stopping\u2026 one moment.");}
 $("stop").onclick=stopAI;
 $("eng").onchange=function(){say("");refresh();};
 $("pol").onchange=function(){write("tka:pol",$("pol").value);refresh();};
