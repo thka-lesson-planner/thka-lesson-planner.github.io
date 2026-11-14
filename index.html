@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; img-src data:; connect-src https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; worker-src blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; img-src data:; connect-src https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; worker-src 'self' blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Lesson Planning Helper | Treehouse Kids Academy</title>
+<script src="coi-serviceworker.js"></script>
 <style>
 :root{--bg:#FFF8E7;--card:#FFFFFF;--ink:#3B2F24;--muted:#7A6A5A;--line:#EADFC8;--leaf:#4FA36B;--leaf2:#DFF3E4;--sun:#FFD166;--coral:#FF8F7A;--sky:#CDEBF7;--bark:#8A5E3B;box-sizing:border-box}
 *,*::before,*::after{box-sizing:border-box}
@@ -135,18 +136,22 @@ body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
       <label class="f" for="age">Class age: <span class="agepill" id="agel"></span></label>
       <input type="range" id="age" min="1" max="5" step="1" value="3">
       <div class="ticks" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
-      <div class="btns"><button class="btn big" id="go" type="button">Plan it!</button><button class="btn alt" id="mo" type="button">&#128197; Plan the whole month</button><button class="btn alt" id="mh" type="button">&#9999;&#65039; Add by hand</button><button class="btn alt" id="stop" type="button" hidden>Stop</button></div>
+      <div class="btns"><button class="btn big" id="go" type="button">Plan it!</button><button class="btn alt" id="mo" type="button">&#128197; Plan the whole month</button><button class="btn alt" id="mh" type="button">&#9999;&#65039; Add by hand</button><button class="btn alt" id="pm" type="button">✨ Polish more with AI</button><button class="btn alt" id="stop" type="button" hidden>Stop</button></div>
       <div id="msg" aria-live="polite"></div>
     </div><div>
       <label class="f" for="gm">Which month&rsquo;s theme?</label><select id="gm"></select>
       <label class="f" for="gs">Planner row</label><select id="gs"></select>
       <label class="f" for="gd">Which day?</label><select id="gd"></select>
       <label class="f" for="bud">Weekly supply budget ($)</label><input type="text" id="bud" inputmode="numeric" maxlength="4" value="45">
-      <label class="f" for="eng">Where should the AI run? <span class="st" id="st"></span></label>
-      <select id="eng"><option value="browser">In my browser (private, uses graphics card)</option><option value="sample">Sample (instant, no AI)</option></select>
-      <p class="note inl" id="wrow"><label for="wm">Model: </label><select id="wm" style="width:auto"><option value="small">Faster (Qwen 1.5B, ~1 GB)</option><option value="big">Better (Qwen 3B, ~2 GB)</option></select></p>
+      <label class="f" for="eng">AI helper <span class="st" id="st"></span></label>
+      <select id="eng"><option value="cpu">Reliable mode: runs on this computer (recommended)</option><option value="gpu">Fast mode: uses the graphics card (strong computers only)</option><option value="bank">No AI: built-in activity bank only</option></select>
+      <p class="note inl" id="cmrow"><label for="cm">Size: </label><select id="cm" style="width:auto"><option value="light">Light (about 0.5 GB, quickest, best for tablets)</option><option value="balanced">Balanced (about 1.1 GB, more creative)</option></select></p>
+      <p class="note inl" id="polrow"><label for="pol">AI polish at a time: </label><select id="pol" style="width:auto"><option value="5">Soonest 5 (quick, best for tablets)</option><option value="10">Soonest 10</option><option value="999">Whole month (slow)</option></select></p>
+      <div class="btns" style="margin-top:6px"><button class="btn alt" id="setup" type="button" hidden>Set up AI helper</button></div>
       <progress id="prog" max="100" value="0" hidden></progress>
+      <p class="note" id="dlnote" aria-live="polite"></p>
       <p class="note" id="wnote"></p>
+      <details class="note"><summary>Technical details</summary><div id="tech"></div></details>
     </div></div>
   </section>
 
@@ -166,7 +171,7 @@ body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     <div class="btns noprint"><button class="btn alt" id="pr" type="button">&#128424; Print week</button><button class="btn alt" id="pmo" type="button">&#128424; Print month</button><button class="btn alt" id="clr" type="button">Clear this week</button></div>
   </section>
   </div><section id="pg-sign" hidden></section>
-  <footer>No tracking, no accounts. If you choose the in-browser AI, the AI library and model are downloaded once from public hosts (jsDelivr and Hugging Face); your text is never uploaded. Plans are saved in this browser only.<br>Standard names below are the learning areas of the Idaho Early Learning eGuidelines; confirm wording against the current Idaho STARS documents. © 2026 Joaquin Ruby and Athena Gilbertson. All rights reserved. No part of this software may be copied, redistributed, or used commercially without written permission from the copyright holders.</footer>
+  <footer>No tracking, no accounts. If you set up the AI helper, its engine and model are downloaded once from public hosts (jsDelivr and Hugging Face) and saved on this device; your text is never uploaded. AI helper credits: Qwen2.5 models (Apache 2.0, Alibaba Cloud), wllama (MIT), WebLLM (Apache 2.0). Plans are saved in this browser only.<br>Standard names below are the learning areas of the Idaho Early Learning eGuidelines; confirm wording against the current Idaho STARS documents.</footer>
 </main>
 <dialog id="dlg"><div id="dbody"></div></dialog>
 <div id="pp"></div>
@@ -312,27 +317,27 @@ function edSave(){
   edCollect();var x=E.a;if(!x.title){$("edmsg").textContent="Please give the activity a name first.";return;}
   if(!x.std.length)x.std=[ROWSTD[x.slot]];
   x.theme=plan(E.k).theme||x.theme;
-  if(!E.isNew)rmAct(E.orig);
+  if(!E.isNew){x.pol=true;rmAct(E.orig);}
   plan(E.k).acts.push(x);V.wk=E.k;save();$("dlg").close();render();}
 async function edAI(){
   if(AI.busy)return;edCollect();var x=E.a,m=$("edmsg"),age=x.age||+$("age").value,cmd=$("ef-ai").value.trim();
-  if($("eng").value!=="browser"){m.textContent="AI help needs \u201CIn my browser\u201D selected in the Make an activity box.";return;}
-  if(AI.gpu===false){m.textContent="WebGPU isn\u2019t available in this browser. Try desktop Chrome or Edge.";return;}
+  if($("eng").value==="bank"){m.textContent="AI help is switched off. Choose Reliable mode in the Make an activity box.";return;}
+  if(!engReady()&&!engCached()){m.textContent="Set up the AI helper first (the button is in the Make an activity box on the page behind this window).";return;}
   if(!cmd)cmd=(x.summary&&x.steps.length)?"Polish this activity and keep my ideas.":"Fill in whatever is missing and make it fun.";
-  AI.busy=true;AI.stop=false;$("ef-go").disabled=true;$("go").disabled=$("mo").disabled=true;$("ef-stop").hidden=false;
-  var t0=Date.now(),acc="";
+  AI.busy=true;AI.stop=false;$("ef-go").disabled=true;busyUI(true);$("go").disabled=$("mo").disabled=true;$("ef-stop").hidden=false;
   try{
-    await webLoad(WM[$("wm").value].id);refresh();AI.tag="Asking the AI";
-    var cur={title:x.title,summary:x.summary,materials:x.materials,steps:x.steps,ageTip:x.tip,estCost:x.cost};
-    var msgs=[{role:"system",content:SYS},{role:"user",content:"Today is "+todayStr()+". A teacher is working on this activity:\n"+JSON.stringify(cur)+"\n\nTeacher's command: "+cmd+"\nChild age: "+AGEL[age]+"\nAge guidance: "+AGEG[age]+"\nMonthly theme: "+(plan(E.k).theme||x.theme||"none")+"\nPlanner row: "+x.slot+"\nWeekly supply budget: $"+budget()+" for all activities, so keep supplies cheap.\nRewrite the whole activity following the command. Keep what the teacher wrote unless the command changes it. Return JSON only."}];
-    acc=await genWeb(msgs,ITEM,t0,1200);
+    var eng=await ensureAI();
+    if(!eng.ok){m.textContent=eng.note;return;}
+    AI.tag="Asking the AI";
+    var cur={title:x.title,summary:x.summary,materials:x.materials,steps:x.steps,tip:x.tip,cost:x.cost,std:x.std,slot:x.slot,theme:plan(E.k).theme||x.theme||""};
+    var d=await rewriteAct(cur,"The teacher's command: "+cmd+". Keep what the teacher wrote unless the command changes it.",age);
     if(AI.stop){m.textContent="Stopped.";return;}
-    var d=parse(acc);if(!d){m.textContent="The AI\u2019s answer couldn\u2019t be read. Try rephrasing your command.";return;}
-    var tc=tipCost(d,age),set=function(id,v,n){v=String(v==null?"":v).trim().slice(0,n);if(v)$(id).value=v;},ln=function(a){return (Array.isArray(a)?a:[]).map(function(t){return String(t).trim();}).filter(Boolean).join("\n");};
-    set("ef-t",d.title,70);set("ef-s",d.summary,400);set("ef-m",ln(d.materials),600);set("ef-p",ln(d.steps),1500);set("ef-i",tc.tip,300);set("ef-c",tc.cost,40);
-    autoAll();m.textContent="Updated! Read it over, change anything you like, then press Save.";
-  }catch(e){m.textContent="Couldn\u2019t finish: "+(e&&e.message?e.message:e);}
-  finally{AI.tag="";AI.busy=false;$("ef-go").disabled=false;$("go").disabled=$("mo").disabled=false;$("ef-stop").hidden=true;}}
+    if(!d){m.textContent="The AI’s answer couldn’t be read. Try rephrasing your command.";return;}
+    var tcs=tipCost(d,age),set=function(id,v,n){v=String(v==null?"":v).trim().slice(0,n);if(v)$(id).value=v;},ln=function(a){return (Array.isArray(a)?a:[]).map(function(t){return String(t).trim();}).filter(Boolean).join("\n");};
+    set("ef-t",d.title,70);set("ef-s",d.summary,400);set("ef-m",ln(d.materials),600);set("ef-p",ln(d.steps),1500);set("ef-i",tcs.tip,300);set("ef-c",tcs.cost,40);
+    autoAll();m.textContent="Updated! Read it over, change anything you like, then press Save."+(eng.note?" "+eng.note:"");
+  }catch(e){m.textContent="Couldn’t finish: "+(e&&e.message?e.message:e);}
+  finally{AI.tag="";AI.busy=false;$("ef-go").disabled=false;busyUI(false);$("ef-stop").hidden=true;}}
 function moveTo(k,id,nk,nd,nr){var p=plan(k),a=p.acts.filter(function(x){return x.id===id;})[0];if(!a)return;
   p.acts=p.acts.filter(function(x){return x!==a;});a.day=nd;if(nr&&nr!==a.slot)setSlot(a,nr);
   if(plan(nk).theme)a.theme=plan(nk).theme;plan(nk).acts.push(a);V.wk=nk;save();render();}
@@ -407,125 +412,446 @@ function toAct(d,text,age,only,slotSel){
   return {id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),title:cl(d.title,70)||cap(text).slice(0,60),slot:slot,theme:th?th.t:"",month:th?th.m:V.m,std:std,age:age,
     summary:cl(d.summary,400),cost:cl(tc.cost,40),steps:arr(d.steps,6,300),materials:arr(d.materials,8,80),tip:cl(tc.tip,300),day:0};}
 
-// ---------- AI ----------
+// ---------- Built-in activity bank (instant, works with no AI) ----------
+// Format per theme: plural noun | singular noun | craft title | craft supplies | movement | science title~science idea | science supplies
+var BANKRAW={
+"Hibernation & Winter Animals":"bears|bear|Sleepy Bear Plate Puppets|paper plates, crayons or brown paint, scrap paper|tiptoe like sleepy bears|Cozy Cave Test~Build a cave from a box and feel which fabric feels warmest for a stuffed animal|a box, fabric scraps, a stuffed animal",
+"Winter Weather":"snowflakes|snowflake|Coffee-Filter Snowflakes|coffee filters, washable markers, a spray bottle of water|bundle up and march through pretend snow|Weather Watch~Look out the window and match today's weather to a picture card|paper, crayons, a window",
+"Mittens & Scarves":"mittens|mitten|Mitten Match Collage|paper mittens, stickers or fabric scraps, glue|put on pretend mittens and slide across the floor|Warm Hands Test~Feel a cool pack with bare hands, then with a mitten, and talk about the difference|mittens, a cool pack or bowl of cool water",
+"Snowman":"snowmen|snowman|Cotton-Ball Snowmen|paper, cotton balls, glue, construction paper scraps|roll and stack like a snowman|Melting Snowman~Put an ice cube in a bowl, predict what will happen, and watch it melt|ice cubes, bowls, paper towels",
+"Snow & Ice":"ice cubes|icicle|Salt-and-Glue Ice Art|cardstock, glue, salt, watercolor or food coloring|slip and slide on pretend ice|Ice Rescue~Freeze small toys in ice and find ways to free them with warm water and salt|toys, a tub, ice, warm water, salt",
+"New Year's":"noisemakers|noisemaker|Paper-Plate Noisemakers|paper plates, dried beans or rice, strong tape, stickers|count down and jump into the new year|Bubbling Countdown~Watch baking soda and vinegar fizz while counting down from five|baking soda, vinegar, a tray, cups",
+"Milk Day":"milk cartons|milk|Milk-Carton Cow Puppets|paper cups or bags, black paper, glue, crayons|stretch and pretend to milk a cow|Swirling Milk~Add a drop of food coloring and dish soap to a shallow dish of milk and watch the colors swirl|milk, food coloring, dish soap, cotton swabs, a shallow dish",
+"Groundhog Day":"groundhogs|groundhog|Pop-Up Groundhog Puppets|paper cups, craft sticks, brown paper, markers|pop up and down like a groundhog|Shadow Play~Use a flashlight to make shadows of toys on a wall and see them grow and shrink|a flashlight, toys, a blank wall or sheet",
+"Community Helpers":"community helpers|helper|Helper Hat Art|paper strips, tape, markers, stickers|act out what a firefighter, nurse, or mail carrier does|Mystery Helper Bag~Feel tools from different helpers in a bag and guess who uses them|a paper bag, a spoon, a toy stethoscope, dress-up tools",
+"100th Day of School":"stickers|hundred|100th-Day Crowns|paper strips, dot stickers or marker dots, tape|do 10 jumps, 10 claps, and 10 hops|Count to 100 Lab~Group items into ten piles of ten and count them together|large buttons or blocks, cups, paper",
+"Healthy Habits & Hygiene":"toothbrushes|toothbrush|Soap-Suds Painting|shaving foam or soap, paper, a tray|wash, brush, and scrub in a silly dance|Germ Glitter Wash~Sprinkle glitter on hands to stand for germs, then rinse with plain water and with soap and compare|glitter, water, soap, a bowl, towels",
+"Friendship":"friends|friend|Friendship Chain|paper strips, tape or glue, markers|mirror a friend's moves|Sink or Float Teams~Predict with a friend which toys sink or float, then test together|a tub of water, large toys, towels",
+"Valentines":"hearts|heart|Heart Collage Cards|red and pink paper, glue, crayons, scissors (adult cuts)|beat like a heart: stomp, clap, and hop|Heartbeat Check~Jump up and down, then feel your heartbeat with a hand on your chest|just our hands",
+"Presidents' Day":"flags|president|Paper Top Hats and Flags|paper, crayons, tape, craft sticks|march in a parade|Red + Blue Magic~Mix red and blue paint to see what color it makes|red and blue paint, a plate, paper",
+"Colors of the Rainbow":"rainbows|rainbow|Rainbow Streamers|paper strips in rainbow colors, tape, a paper plate|wave rainbow ribbons high and low|Walking Water Rainbow~Put cups of colored water in a row with paper towels between them and watch the colors travel|clear cups, water, food coloring, paper towels",
+"Dr. Seuss & Friends":"silly hats|hat|Silly Striped Hats|paper strips, crayons, tape, scrap paper|wiggle and hop like silly storybook creatures|Oobleck Fun~Mix cornstarch and water and explore whether it acts like a solid or a liquid|cornstarch, water, a tray, a spoon",
+"St. Patrick's Day":"shamrocks|clover|Clover Stamp Art|green paint, paper, sponges or paper cut-outs|jig and hop like a leprechaun|Green Mix~Mix yellow and blue to make green and describe what happens|yellow and blue paint or colored water, cups",
+"Pets & Animal Care":"pets|pet|Paper Pet Masks|paper plates, yarn, crayons, craft sticks|crawl and meow like pets|Pet Care Sort~Sort toy animals by what they need: food, water, a bed, or play|toy pets, bowls, small baskets",
+"Weather":"clouds|cloud|Cotton-Ball Cloud Collage|blue paper, cotton balls, glue|spin like wind and stomp like thunder|Rain Cloud in a Jar~Squirt shaving-foam clouds onto a jar of water and drip colored water through them|a clear jar, water, shaving foam, food coloring, a dropper",
+"Dinosaurs":"dinosaurs|dinosaur|Paper-Plate Dinosaurs|paper plates, paint or crayons, paper triangles, glue|stomp and roar like dinosaurs|Fossil Dig~Bury toy dinosaurs in a tub of sand or rice and brush them out like a paleontologist|a tub, sand or rice, paintbrushes, toy dinosaurs",
+"Transportation":"vehicles|vehicle|Box Cars|small boxes, paper plates for wheels, markers, tape|zoom like cars, planes, and trains|Ramp Races~Roll toy cars down a ramp and compare which goes farthest|a board or cardboard, books, toy cars",
+"Easter":"eggs|egg|Paper Egg Mosaics|paper, scrap paper, glue|hop like bunnies|Egg Sort and Shake~Sort and count plastic eggs, then shake them to guess what is inside|plastic eggs, rice (sealed inside), a basket",
+"Earth Day":"trees|earth|Earth Day Planet Collage|blue and green paper, glue, scrap paper|tiptoe like a tree growing and sway in the wind|Dirt Detectives~Look through a tray of soil with magnifying glasses for tiny treasures|soil, trays, a magnifying glass or clear cups",
+"Spring":"sprouts|seed|Tissue-Paper Blossoms|paper, tissue paper, glue, a green marker|grow like a seed from tiny to tall|Bean in a Bag~Tape a damp paper towel and a bean to a window in a zip bag and check each day for roots|zip bags, paper towels, beans, tape",
+"Rain & Puddles":"raindrops|rain|Puddle Splash Painting|blue paint, paper, sponges, cups|splash and jump in pretend puddles|Raindrop Race~Drop water on wax paper and tilt it to watch the drops roll and join|wax paper, water, droppers or spoons",
+"Life Cycles":"butterflies|butterfly|Butterfly Life-Cycle Wheel|a paper plate, crayons, a paper clip|wiggle like a caterpillar, then fly like a butterfly|Growing Up Line-Up~Put picture cards of a chick, frog, or butterfly growing in order and tell its story|picture cards, a table",
+"Recycling":"bottles|bottle|Recycled Robots|boxes, cardboard tubes, tape, markers|sort and toss pretend recycling into bins|Trash or Treasure Sort~Sort clean items into recycle, reuse, and trash bins|clean paper, plastic bottles, boxes, three bins",
+"Birds":"birds|bird|Feather Collage Birds|paper, craft feathers or paper strips, glue|flap and glide like birds|Nest Builders~Gather grass, yarn, and leaves and try to build a nest that holds a toy egg|grass, yarn scraps, leaves, a small bowl, a toy egg",
+"Baby Animals & Insects":"baby animals|baby|Handprint Chicks|yellow paint, paper, markers|hop like a bunny and waddle like a duckling|Match the Mama~Match baby animal pictures to their grown-up animals|picture cards or magazine cut-outs",
+"Creepy Crawlers":"bugs|bug|Paper-Plate Ladybugs|paper plates, red paint, black paper dots, glue|crawl like caterpillars and buzz like bees|Bug Hunt~Use magnifying glasses outside or look at pictures to find bugs and count their legs|a magnifying glass or paper tube, paper, crayons",
+"Flowers & Garden":"flowers|flower|Coffee-Filter Flowers|coffee filters, washable markers, a spray bottle, paper stems|stretch and bloom like a flower|Plant a Seed~Plant a seed in a cup and predict how tall it will grow|cups, soil, seeds, water",
+"Mother's Day":"love notes|mom|Special Grown-Up Love Cards|paper, paint, markers|give giant pretend hugs and blow kisses|Smell and Guess~Smell safe kitchen scents like cinnamon or orange peel in covered cups and guess what they are|small covered cups, cinnamon, orange peel",
+"Outer Space":"stars|star|Foil Rockets|paper, foil, tape, markers|blast off like a rocket and float like an astronaut|Moon Craters~Drop balls into flour in a pan and look at the craters they make|flour or cornmeal, a pan, balls or rocks",
+"Pets":"pets|pet|Pet Portrait Bag Puppets|paper bags, markers, scrap paper|walk, hop, and swim like pets|Fur Feel Box~Feel different textures like fur, feathers, and fabric in a box and match them to pets|a box, fabric scraps, cotton, feathers",
+"Seasons":"seasons|season|Four-Season Tree|paper, paint or crayons, cotton balls|spin through the seasons: bloom, sunbathe, rake, and shiver|Season Sort~Sort clothes or clothing pictures by season|clothing or picture cards, hoops or baskets",
+"Fairy Tales":"castles|crown|Paper Crowns|paper strips, markers, stickers, tape|tiptoe like a fairy and stomp like a giant|Beanstalk Growth~Predict how tall a bean sprout will grow and measure it with yarn|beans, a paper towel, a zip bag, yarn",
+"Memorial Day":"flags|flag|Flag Handprints|red and blue paint, white paper, brushes|march in a quiet parade|Breeze Test~Wave flags and feel the breeze, then see whether paper, cloth, or tissue flutters the most|paper, tissue, cloth strips, craft sticks, tape",
+"Summer Fun":"suns|sun|Sun Paper Plate Art|paper plates, yellow paint, paper strips|splash through a pretend sprinkler|Sun and Shade~Put a toy in the sun and one in the shade and feel which is warmer|toys, a sunny spot, a shady spot",
+"Camping & Nature":"tents|tent|Paper-Bag Campfires|brown paper bags, red, orange, and yellow tissue paper, glue|hike, climb, and tiptoe as if we are camping|Nature Walk Treasures~Collect leaves, sticks, and rocks (or draw them) and sort them|a paper bag, a clipboard or paper",
+"Ocean & Sea Animals":"fish|fish|Sponge-Paint Ocean|paper, blue paint, sponges, crayons|swim like fish and crawl like crabs|Sink or Float~Test which items sink or float in a tub of water|a tub of water, a sponge, a spoon, a rock, a cork",
+"Construction & Building":"blocks|bridge|Box Construction Trucks|boxes, paper tubes, tape, markers|dig, scoop, and dump like construction trucks|Strong Tower Test~Build with blocks or cups and test which shape stands the tallest|blocks or paper cups, a ruler or yarn",
+"America the Beautiful":"stars|flag|Stars and Stripes Art|red and blue paper strips, white paper, star stickers|march to a parade beat|Firework Colors~Drop food coloring onto a wet coffee filter and watch the colors burst|coffee filters, water, food coloring or markers",
+"Superheroes":"superheroes|hero|Hero Capes and Cuffs|paper bags or old T-shirts, markers, tape|fly, leap, and power-pose like superheroes|Magnet Powers~Test which items are magnetic|large magnets, a paper clip, a spoon, a crayon, foil",
+"Jungle & Safari":"monkeys|monkey|Paper-Bag Safari Animals|paper bags, markers, paper scraps|swing like monkeys and stomp like elephants|Animal Footprints~Press toy animal feet into play dough and match the tracks|play dough or salt dough, toy animals",
+"Zoo Animals":"zoo animals|zoo|Zoo Mask Parade|paper plates, crayons, craft sticks|waddle like penguins and stretch like giraffes|Zoo Sort~Sort toy animals by size, color, or where they live|toy animals, baskets or hoops",
+"Review":"favorite things|star|Memory Scrapbook Pages|paper, crayons, stickers|freeze and act out a favorite activity from this year|Our Favorite Experiments~Repeat a favorite experiment from this year and tell what we remember|materials from a past experiment",
+"Back to School":"backpacks|backpack|Backpack Crayon Rubbings|paper, crayons with the wrappers peeled, textured items|line up like ducks and walk to the classroom|Classroom Explorers~Find three things in the room that are heavy, light, big, or small and compare them|classroom objects, a basket",
+"Classroom Rules":"rule cards|rule|Rule Posters|paper, crayons, stickers|play Stop and Go to practice classroom safety rules|Quiet and Loud Lab~Make quiet and loud sounds with classroom items and compare them|classroom items like blocks, a book, a cup",
+"All About Me & My Favorites":"faces|me|Me Self-Portraits|paper, a mirror, crayons, yarn|freeze in a favorite pose|Mirror Detectives~Look in a mirror, notice your eyes and hair, and kindly compare with a friend|a mirror, paper, crayons",
+"Emotions":"feeling faces|feeling|Feelings Faces|paper plates, crayons, craft sticks|show happy, sad, mad, and silly with our whole bodies|Calm-Down Jar~Shake a jar of water, glitter, and clear glue and watch the glitter settle like our feelings|a jar with a tight lid, water, clear glue, glitter",
+"Apples":"apples|apple|Apple Stamp Painting|apple halves (adult cuts), red and green paint, paper|pick and gather apples like in an orchard|Apple Taste Test~Look at, smell, and (after checking allergies) taste red, green, and yellow apple slices and vote for a favorite|apples, a plate, paper for a vote chart",
+"Colors & Shapes":"shapes|shape|Shape Collage Creatures|paper shapes, glue, crayons|walk the lines of big shapes taped on the floor|Color Mixing~Mix red, yellow, and blue paint to make orange, green, and purple|paint, plates, craft sticks, paper",
+"Fall":"leaves|leaf|Leaf Rubbing Art|leaves, paper, crayons with the wrappers peeled|rake, jump, and swirl like falling leaves|Leaf Sort~Collect leaves and sort by color, size, or shape|leaves, baskets, paper",
+"Leaves":"leaves|leaf|Tissue Leaf Suncatchers|clear contact paper, tissue paper, yarn|dance like leaves in the wind|Leaf Color Change~Press leaf scraps or markers onto a coffee filter and add water drops to watch the colors spread|coffee filters, leaves or markers, water",
+"Fire Safety":"firefighters|fire|Firefighter Hats|red paper, tape, stickers|practice stop, drop, and roll on a mat|Hot or Not~Sort pictures of things that are hot from things that are safe to touch|picture cards, two baskets",
+"Pumpkins & Farm":"pumpkins|pumpkin|Paper-Plate Pumpkins|paper plates, orange paint, green paper|roll and carry pumpkins across the patch|Pumpkin Investigation~Feel, shake, and measure a pumpkin, then scoop out the insides to explore the seeds|a pumpkin, a spoon, a tray, yarn",
+"Spiders & Bats":"spiders|spider|Paper-Plate Spiders|paper plates, black paint, black paper strips|crawl like spiders and fly like bats|Web Wonder~Lay yarn on a tray to make a web and test how much it can hold|yarn, a tray, light toys",
+"Halloween Fun":"costumes|ghost|Friendly Ghost Art|white paint, black paper, markers|march in a costume parade|Fizzing Pumpkin~Pour vinegar on baking soda in a cup or small pumpkin and watch it fizz|baking soda, vinegar, a cup or small pumpkin, a tray",
+"Healthy Foods & Body":"fruits and veggies|vegetable|Food Plate Collage|paper plates, magazine pictures or paper food cut-outs, glue|exercise like a healthy body: stretch, jump, and run in place|Fruit and Veggie Sort~Sort real or picture produce by color and talk about how it grows|produce or picture cards, baskets",
+"Thankful & Sharing":"thank-you notes|thanks|Thankful Tree|paper, a brown paper trunk, paper leaves, crayons|take turns passing a bean bag in a sharing circle|Share the Pile~Share a basket of large items fairly with a friend and count to check it is equal|baskets, large blocks or balls",
+"Turkeys & Thanksgiving":"turkeys|turkey|Handprint Turkeys|paint, paper, markers|strut like a turkey|Feather Float~Drop a feather, a paper, and a small rock and watch which falls fastest|a feather, paper, a small rock, a cup",
+"Five Senses":"senses|sense|Five-Senses Collage|paper, five different textures, glue|point to the body part for each sense|Mystery Smell Jars~Sniff safe smells like cinnamon, orange, and vanilla in covered containers and guess|covered containers, cinnamon, orange peel, vanilla",
+"Harvest":"vegetables|harvest|Fall Vegetable Prints|potatoes or bell peppers (adult cuts), paint, paper|pick, carry, and sort pretend vegetables|Seed Hunt~Open a pumpkin, an apple, and a pepper and compare their seeds|fruits and vegetables, a spoon, a tray (wash hands, check allergies)",
+"My Family":"family members|family|Family Portraits|paper, crayons, yarn|march like a family parade|Whose Is It?~Match everyday objects like a spoon, shoes, or a toy to the family member who uses them|household objects, picture cards",
+"Gingerbread":"gingerbread cookies|gingerbread|Paper Gingerbread Houses|brown paper, construction paper, glue, stickers|dash and tiptoe like a gingerbread cookie|Salt Dough Science~Mix salt dough, shape cookies, and see how they change after drying (not for eating)|flour, salt, water, a bowl",
+"Christmas Around the World":"ornaments|ornament|Paper Ornament Garland|paper, yarn, a hole punch (adult), crayons|dance around the world: waltz, jig, and clap|World Map Look~Find one place on a map or globe and look at one tradition from there|a globe or map, picture cards",
+"Lights & Decorations":"lights|light|Paper Chain Lights|paper strips, glue or tape, markers|twinkle like lights: crouch, sparkle fingers, and glow|Light and Shadow~Shine a flashlight through paper, plastic, and foil and compare what passes through|a flashlight, wax paper, tissue, foil, plastic wrap",
+"Santa & His Elves":"elves|elf|Elf Hat Collage|paper, cotton balls, glue|hop like elves packing gifts|Gift Weigh-In~Use a balance scale or your hands to compare which wrapped boxes are heavier or lighter|boxes, wrapping paper, a balance or just hands",
+"Reindeer":"reindeer|reindeer|Handprint Reindeer|brown paint, paper, markers|prance and gallop like reindeer|Reindeer Tracks~Press toy feet or hands into play dough and compare big and small tracks|play dough, toys"
+};
+var TUNES=["Twinkle, Twinkle, Little Star","Row, Row, Row Your Boat","Mary Had a Little Lamb","The Wheels on the Bus","If You're Happy and You Know It","Old MacDonald Had a Farm"];
+var CNT={1:3,2:3,3:5,4:10,5:15},CNTW={3:"three",5:"five",10:"ten",15:"fifteen"};
+function band(age){return age<=2?0:age===3?1:2;}
+function lc(s){s=String(s||"");return s.charAt(0).toLowerCase()+s.slice(1);}
+function tc(s){return String(s||"").replace(/(^|[\s-])([a-z])/g,function(m,a,b){return a+b.toUpperCase();});}
+function fill(s,c){return String(s).replace(/\{(\w+)\}/g,function(m,k){return c[k]!=null?c[k]:m;});}
+function bkTheme(name,idea){
+  var s=BANKRAW[name];
+  if(!s){var w=String(idea||name||"our theme").toLowerCase().replace(/[^a-z0-9' &-]/g,"").trim().slice(0,40)||"our theme";
+    return {n:w,o:w.split(" ").pop(),craft:cap(w)+" Collage",cmat:"paper, crayons, glue, scrap paper",move:"move like "+w,scT:"Look Closer",scD:"Look closely at pictures or objects about "+w+" and describe what we notice",smat:"pictures or safe objects about "+w+", a magnifying glass or paper tube",gen:1};}
+  var p=s.split("|"),sc=(p[5]||"").split("~");
+  return {n:p[0],o:p[1],craft:p[2],cmat:p[3],move:p[4],scT:sc[0],scD:sc[1]||sc[0],smat:p[6]||"",gen:0};}
+var BT={
+"Song & Fingerplays":[
+{t:"The {NT} Song",s:"Children sing a brand-new {o} verse to the tune of “{tune}” and add a motion for each line.",
+ st:["Sing “{tune}” together once so everyone knows the tune.","Make up two new lines about {n} and choose a motion for each line (clap, stomp, or wiggle).","Sing the new verse three times, getting softer, louder, or faster each time.","Let a child choose the motion for the last line."],
+ m:["Your voices","Optional: a picture of a {o}"],c:"Free",
+ tip:["Sing slowly and repeat one short line many times; toddlers can join in with sounds and motions.","Offer two motions to choose from for each line.","Let children suggest the new words and keep the beat with claps."],sd:["LL","CA"]},
+{t:"{fwC} Little {NT}",s:"A counting-down fingerplay: {fw} little {n} leave one by one, and children count back up.",
+ st:["Hold up {fw} fingers and say: “{fwC} little {n}, ready to play.”","Fold one finger down at a time as the {n} “go away”, hiding your hand behind your back at zero.","Ask “Where did the {n} go?” and bring them back one finger at a time.","Repeat, letting a child be the leader."],
+ m:["Your hands"],c:"Free",
+ tip:["Use just 2 or 3 fingers and let toddlers wiggle their own fingers.","Count along on fingers, showing one at a time.","Count backward and ask how many are left each time."],sd:["LL","MA"]}],
+"Story":[
+{t:"{NT} Story Circle",s:"Children listen to a picture book about {t} and talk about what they see and what happens.",
+ st:["Pick a picture book about {t} from the library or classroom shelf.","Show the cover and ask: “What do you think this book is about?”",["Read slowly and pause on the pictures so children can point and name what they see.","Read slowly and ask a simple question on each page: “What do you see?”","Read with expression and pause to ask: “What do you think will happen next?”"],["Wave goodbye to the story and name one favorite picture.","End with one question: “What was your favorite part?”","Ask children to retell the beginning, middle, and end in their own words."]],
+ m:["A picture book about {t}","A cozy reading spot"],c:"Free",
+ tip:["Choose a sturdy board book and let toddlers point to and name pictures.","Let children turn the pages and answer simple what and who questions.","Encourage predictions and ask children to retell the story."],sd:["LL","AL"]},
+{t:"Puppet Story Time: {NT}",s:"Children use paper stick puppets of {n} to retell or invent a short story.",
+ st:["Draw simple {o} faces on paper and tape them to craft sticks (an adult prepares these for the youngest children).","Show how a puppet “talks” and moves.","Tell a three-sentence story together with a beginning, a middle, and an end.","Let children take turns making their puppets talk and act out the story."],
+ m:["Paper","Craft sticks or paper bags","Crayons","Tape"],c:"About $1",
+ tip:["Hold a puppet yourself and let toddlers wave and greet it.","Offer two story starters and let children choose.","Have children invent their own short story and act it out for a friend."],sd:["LL","SE"]}],
+"Art":[
+{t:"{craft}",s:"Children make “{craft}” with simple supplies, practicing fine-motor skills and making their own creative choices.",
+ st:["Cover the table and set out the supplies.","Show a finished example, then invite children to make their own version. There is no wrong way!","Help with cutting, and let children color, glue, and decorate.","Display the finished art and let each child tell about theirs."],
+ m:["{cmat}"],c:"About $2-4",
+ tip:["Use washable, taste-safe materials and let toddlers scribble, dab, and tear instead of cutting.","Pre-cut shapes and let children glue and decorate freely.","Encourage children to plan their design first, and offer safety scissors for cutting practice."],sd:["CA","PH"]},
+{t:"Stamp and Splash: {NT}",s:"Children explore color and texture by dabbing and stamping {n} shapes onto paper.",
+ st:["Cover the table and pour a little washable paint onto a tray.","Show how to press a sponge, a cut potato, or a hand into the paint and then onto paper.","Let children fill a page with prints and name the colors they used.","Hang the pages to dry and talk about the patterns."],
+ m:["Washable paint","Sponges or cut shapes","Paper","A tray"],c:"About $3",
+ tip:["Let toddlers use their hands and big sponges, and expect lots of mess.","Offer two colors at a time so mixing is a happy surprise.","Ask children to make a pattern with their prints."],sd:["CA","AL"]}],
+"Literacy":[
+{t:"Letter Hunt: {L} is for {O}",s:"Children find the first letter of “{o}” around the room and listen for its sound.",
+ st:["Write the letter {L} big on paper and show a picture of a {o}.",["Say “{o}” together, then point to the picture and repeat the word.","Say “{o}” slowly and listen for the first sound: /{l}/. Have children say it with you.","Say “{o}”, clap its syllables, and listen for the first sound /{l}/. Name other words that start with {L}."],"Hide paper letter {L}s around the room and let children find them.","Finish by tracing the {L} in the air, in a tray of salt, or with a crayon."],
+ m:["Paper and a marker","A picture of a {o}","Optional: a tray of salt or sand"],c:"Free",
+ tip:["Focus on hearing and repeating the word; scribbling counts as writing.","Say the sound each time a child finds a letter.","Ask children to write the letter and name another word that starts with it."],sd:["LL","AL"]},
+{t:"Picture Word Match: {NT}",s:"Children match pictures of {n} to word cards, building early reading skills.",
+ st:["Draw six simple {n} pictures on cards and write the word under each (an adult prepares these).","Lay the picture cards out and mix up the word cards.",["Name each picture together and let children point to the one you say.","Read each word card aloud and let children match it to a picture.","Let children try to read or sound out the word cards before matching."],["Clap and cheer after each match.","Let children place the cards in a pocket chart or on the floor.","Have children write the first letter of one word on a card."]],
+ m:["Index cards or paper","Markers"],c:"Free",
+ tip:["Use two or three big picture cards and say the word each time.","Use pictures with the words underneath so children can look for the first letter.","Add a blank card so children can draw and label their own picture."],sd:["LL","AL"]}],
+"Math":[
+{t:"Count the {NT}",s:"Children count and sort paper {n}, practicing one-to-one counting and comparing groups.",
+ st:["Make {cnt} paper {n} (or gather toys) and put them in a basket.","Count them together, touching each one: one, two, three…",["Ask “Can you put the {n} in the basket?” and help them drop each one in.","Sort the {n} into two piles by color or size.","Sort the {n} into groups by color or size and count each group."],["Count the {n} back out loud when they come out.","Ask “Which pile has more?” and count to check.","Ask “Which group has more, and how many more?”"]],
+ m:["Paper {n} or toys","A basket or bowl","Optional: hoops or trays for sorting"],c:"Free",
+ tip:["Count to 3 with big, safe items and let toddlers carry them one by one.","Count to 5 and use words like more and fewer.","Count up to 15 and compare groups, making a simple chart."],sd:["MA","AL"]},
+{t:"{NT} Patterns",s:"Children copy and make simple patterns with colored {n}.",
+ st:["Cut {n} from two or three colors of paper (an adult can prepare these).",["Line up two matching {n} and say “Same!”","Make a red, blue, red, blue pattern and say it aloud together.","Make a pattern, then ask what comes next. Try a longer pattern like red, red, blue."],"Let children copy your pattern with their own {n}.","Invite children to invent a pattern and teach it to a friend."],
+ m:["Colored paper","Child-safe scissors (adult cuts)","Optional: glue and a paper strip"],c:"Free",
+ tip:["Focus on matching, which is the first step to patterns.","Try an AB pattern with big, easy-to-grab pieces.","Introduce ABB and ABC patterns and ask children to predict the next piece."],sd:["MA","AL"]}],
+"Science":[
+{t:"{scT}",s:"Children get hands-on: {scd}.",
+ st:["Ask a spark question: “What do you think will happen?”","Set out the materials and show children how to begin. Try it together: {scD}.","Let children try it themselves while you describe what they see, hear, and feel.","Ask “What happened?” and let children tell or draw about it."],
+ m:["{smat}"],c:"About $3",
+ tip:["Keep it short and sensory, and hold any materials that could be mouthed.","Use simple words like melt, sink, float, or fizz and ask what they notice.","Ask children to predict first, compare to what happened, and draw the results."],sd:["SC","AL"]},
+{t:"Mystery Bag: {NT}",s:"Children feel objects in a bag, describe what they feel, and guess what is inside.",
+ st:["Put three to five safe items about {t} in an opaque bag.","Invite a child to reach in and describe what they feel: soft, bumpy, smooth, or hard.","Let friends guess, then pull the item out and name it.","Sort the items into groups by how they feel."],
+ m:["An opaque bag or pillowcase","Three to five safe items about {t}"],c:"Free",
+ tip:["Use one large, easy item at a time and say the words soft and bumpy.","Ask children to use a describing word before guessing.","Ask for two describing words and let children make the next mystery bag."],sd:["SC","LL"]}],
+"Gross Motor Skill":[
+{t:"Let’s {move}",s:"Children {move} in a playful game of go, freeze, slow motion, and super speed.",
+ st:["Clear a safe open space and show the movement.","Call “Go!” and let everyone move, then call “Freeze!”","Try it in super slow motion, then super fast.","Let a child be the leader and choose the next move."],
+ m:["An open, safe space"],c:"Free",
+ tip:["Model every move and move alongside toddlers; keep the game short.","Add a simple rule such as freezing when the music stops.","Have children lead the game and add counting hops or balance challenges."],sd:["PH","SE"]},
+{t:"{NT} Obstacle Course",s:"Children travel through a safe obstacle course with stations themed around {t}.",
+ st:["Use tape, pillows, and a low box to set up a path with a few stations.","Name each station after {t}, such as “step over the logs” or “crawl through the cave.”","Show how to move through each station, then let children take turns.","Cheer them on and let them try it again in a different way."],
+ m:["Painter's tape","Pillows or cushions","A cardboard box or tunnel"],c:"Free",
+ tip:["Keep the course low and flat, and stay beside each child.","Use three simple stations such as crawl, step, and jump.","Add five stations, a tape balance line, and a challenge such as hopping on one foot."],sd:["PH","AL"]}],
+"Music & Movement":[
+{t:"{NT} Freeze Dance",s:"Children dance like {n} when the music plays and freeze in a pose when it stops.",
+ st:["Choose a lively song and show a few dance moves that fit {t}.","Play the music and let children dance like {n}.","Pause the music and call “Freeze!” Hold the pose for a count of three.","Play again with a new rule: dance slow, dance low, or dance tiny."],
+ m:["A music player","Optional: scarves or ribbons"],c:"Free",
+ tip:["Dance with toddlers and use scarves to make it fun.","Say “freeze” and count to two before restarting.","Let children choose the next dance move or rule."],sd:["CA","PH"]},
+{t:"Shake and Play: {NT} Band",s:"Children make simple shakers and play along to a steady beat, loud and quiet.",
+ st:["Fill small empty bottles or boxes with rice or dried beans and seal them with strong tape (an adult does this).","Show how to shake to a steady beat while you sing or play music.","Try playing loud, then quiet, then fast, then slow.","Parade around the room like a {n} band."],
+ m:["Empty bottles or small boxes","Rice or dried beans","Strong tape"],c:"About $1",
+ tip:["Seal shakers very securely and supervise closely; toddlers shake along with an adult.","Let children shake to the beat and stop when you do.","Have children copy a short beat pattern of loud and quiet shakes."],sd:["CA","SE"]}]
+};
+function bankAct(thn,row,age,idea,avoid){
+  var th=bkTheme(thn,idea),b=band(age),list=BT[row]||BT["Science"],idx=[],i;
+  for(i=0;i<list.length;i++)if(!avoid||!avoid[row+"|"+thn+"|"+i])idx.push(i);
+  if(!idx.length)for(i=0;i<list.length;i++)idx.push(i);
+  i=idx[Math.floor(Math.random()*idx.length)];if(avoid)avoid[row+"|"+thn+"|"+i]=1;
+  var X=list[i],cnt=CNT[age]||5,fc=Math.min(cnt,10),fwd=CNTW[fc]||String(fc);
+  var c={n:th.n,N:cap(th.n),NT:tc(th.n),o:th.o,O:cap(th.o),L:(th.o.charAt(0)||"a").toUpperCase(),l:(th.o.charAt(0)||"a").toLowerCase(),t:thn||"our theme",
+    tune:TUNES[Math.floor(Math.random()*TUNES.length)],cnt:cnt,cw:CNTW[cnt]||String(cnt),fw:fwd,fwC:cap(fwd),craft:th.craft,cmat:th.cmat,move:th.move,scT:th.scT,scd:lc(th.scD).replace(/\.$/,""),scD:th.scD.replace(/\.$/,""),smat:th.smat};
+  var f=function(s){return fill(s,c);},pick=function(x){return f(Array.isArray(x)?x[b]:x);};
+  var mats=[];
+  X.m.forEach(function(x){if(x==="{cmat}"||x==="{smat}"){f(x).split(/,\s*/).forEach(function(y){if(y.trim())mats.push(cap(y.trim()));});}else mats.push(f(x));});
+  var tip=X.tip[b],all=(mats.join(" ")+" "+th.scD+" "+th.craft).toLowerCase();
+  if(/taste|smell|milk|apple|vegetable|fruit|cookie|gingerbread|cinnamon|vanilla|flour/.test(all))tip+=" Check for allergies before any taste, smell, or food activity.";
+  if(b===0&&/bead|button|coin|pom-pom|cereal|seed|bean|rice|glitter|googly|bottle cap/.test(all+" "+X.m.join(" ").toLowerCase()))tip+=" For ages 1–2, use large items only and keep small pieces out of reach.";
+  if(thn==="Mother's Day")tip+=" Invite children to make it for any special grown-up.";
+  var summ=f(X.s);if(idea)summ="Built around your idea: “"+String(idea).slice(0,80)+"”. "+summ;
+  return {title:cap(f(X.t)),theme:thn,slot:row,standards:X.sd.slice(),summary:summ,steps:X.st.map(pick),materials:mats.slice(0,8),ageTip:tip,estCost:X.c};}
+function fbTheme(only){var m=only==="auto"?V.m:+only,p=plan(V.wk),th=(V.m===m&&p.theme)?findTheme(p.theme,String(m)):null;
+  if(th)return th;var ws=weeks(m),i=Math.max(0,ws.indexOf(V.wk));return {m:m,t:T[m][i%T[m].length]};}
+// ---------- AI helper: Reliable mode (CPU), Fast mode (graphics card), or no AI ----------
+// Reliable mode: wllama (MIT) runs a small Qwen2.5 model (Apache 2.0) on the processor, so it works on almost any laptop or tablet.
+var WLLAMA_BASE="https://cdn.jsdelivr.net/npm/@wllama/wllama@2.3.7/esm/";
+var CM={
+  light:{url:"https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf",mb:491,label:"about 0.5 GB"},
+  balanced:{url:"https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",mb:1120,label:"about 1.1 GB"}};
+// Fast mode: WebLLM on the graphics card (optional, strong computers only).
 var WEBLLM_URL="https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.83/+esm";
-var WM={small:{id:"Qwen2.5-1.5B-Instruct-q4f16_1-MLC",size:"about 1 GB"},big:{id:"Qwen2.5-3B-Instruct-q4f16_1-MLC",size:"about 2 GB"}};
-var AI={busy:false,mod:null,web:null,webId:null,gpu:null,stop:false};
-var SYS="You are a warm, experienced early-childhood teacher helping plan lessons at Treehouse Kids Academy, an early learning academy in Idaho. Turn a teacher's rough idea into ONE short, safe, hands-on activity aligned to the Idaho Early Learning eGuidelines.\n"+
-"Rules:\n- Match the child's age exactly (see the age guidance).\n- Use only common classroom materials.\n- 3 to 5 short steps in plain, friendly language.\n- Under age 3: no small parts or choking hazards. For food activities, remind teachers to check allergies.\n- Keep supplies cheap: prefer free, household, recycled or dollar-store items.\n- Never include children's names or personal data.\n- 'slot' is the planner row that fits best. 'standards' are 1 to 3 learning-area keys: "+Object.keys(STD).map(function(k){return k+" = "+STD[k][0];}).join("; ")+".\n- 'theme' is the ONE monthly theme from the list that best fits the idea, copied exactly.\n- 'ageTip' is one sentence on adapting the activity to the child's age and never mentions money. 'estCost' is the rough supply cost, like \"About $4\".\n- Respond with JSON only.";
-function schema(slotSel){return {type:"object",additionalProperties:false,required:["title","theme","slot","standards","summary","steps","materials","ageTip","estCost"],properties:{
-  title:{type:"string"},theme:{type:"string"},slot:slotSel!=="auto"?{type:"string",enum:[slotSel]}:{type:"string",enum:ROWS},
-  standards:{type:"array",items:{type:"string",enum:Object.keys(STD)}},summary:{type:"string"},steps:{type:"array",items:{type:"string"}},materials:{type:"array",items:{type:"string"}},ageTip:{type:"string"},estCost:{type:"string"}}};}
-function build(text,age,only,slotSel){
-  var th=ms(only).map(function(m){return MN[m]+": "+T[m].join("; ");}).join("\n");
-  return [{role:"system",content:SYS},{role:"user",content:"Today is "+todayStr()+". Plan for today or later, never for dates that have passed.\nTeacher's idea: "+text+"\nChild age: "+AGEL[age]+"\nAge guidance: "+AGEG[age]+"\nWeekly supply budget: $"+budget()+" for all activities, so keep this one cheap."+(slotSel!=="auto"?"\nUse planner row: "+slotSel:"")+"\n\nMonthly themes:\n"+th}];}
-function parse(t){t=t.replace(/<think>[\s\S]*?<\/think>/g,"").trim();try{return JSON.parse(t);}catch(e){}
-  var a=t.indexOf("{"),b=t.lastIndexOf("}");if(a>=0&&b>a){try{return JSON.parse(t.slice(a,b+1));}catch(e){}}return null;}
-function sample(text,age,slotSel){var slot=slotSel!=="auto"?slotSel:guessSlot(text),w=text.trim();
-  return {title:cap(w).slice(0,60),slot:slot,standards:[ROWSTD[slot],"SE"],theme:"",
-    summary:"(Sample draft, not AI.) A hands-on "+slot.toLowerCase()+" activity built around \u201C"+w+"\u201D for "+AGEL[age]+". Choose \u201CIn my browser\u201D for a real AI-written plan.",
-    steps:["Gather the materials and show the children what you will explore together.","Invite the children to try it and describe what they notice.","Ask open questions about what they see, hear, or feel.","Finish with a quick share and clean-up song."],
-    materials:["Items related to \u201C"+w+"\u201D","Chart paper or a basket"],ageTip:AGEG[age]};}
+var WM={id:"Qwen2.5-1.5B-Instruct-q4f16_1-MLC"};
+var AI={busy:false,stop:false,gpu:null,active:null,loading:null,cpu:null,cpuKey:null,wmod:null,web:null,webMod:null,tag:""};
+var SYS2="You are a warm, creative early-childhood teacher at Treehouse Kids Academy in Idaho. You rewrite classroom activities so they are cute, memorable, safe and cheap.\n"+
+"Answer in EXACTLY this format, one label per line, with nothing before or after it:\n"+
+"TITLE: a cute title under 8 words\nSUMMARY: two sentences\nMATERIALS: item; item; item\nSTEPS: step one | step two | step three | step four\nAGE TIP: one sentence about adapting for the age, never about money\nCOST: like About $3\nSTANDARDS: two or three codes from LL, MA, SC, PH, CA, SE, AL\n"+
+"(LL language and literacy, MA math, SC science, PH physical, CA creative arts, SE social-emotional, AL approaches to learning.)\n"+
+"Rules: match the child's age exactly; use only cheap household, recycled or dollar-store items; 3 to 5 short steps in plain friendly words; under age 3 use no small parts or choking hazards; never include children's names.";
 function say(t){$("msg").textContent=t;var e=$("edmsg");if(e)e.textContent=t;var f=$("sg-msg");if(f)f.textContent=t;}
 function status(ok,t){var s=$("st");s.className="st"+(ok===true?" ok":ok===false?" no":"");s.textContent=t;}
-function cached(){return read("tka:wllm:"+WM[$("wm").value].id,false)===true;}
-function refresh(){var e=$("eng").value,m=WM[$("wm").value];$("wrow").hidden=$("wnote").hidden=e!=="browser";write("tka:eng",e);
-  if(e==="browser"){
-    if(AI.gpu===false)status(false,"\u25CB Not available here");
-    else if(AI.web&&AI.webId===m.id)status(true,"\u25CF Model loaded");
-    else if(cached())status(true,"\u25CF Model saved");else status(null,"One-time download");
-    $("wnote").textContent=cached()||(AI.web&&AI.webId===m.id)?"Runs on your graphics card. Nothing leaves this device.":"First use downloads the AI model ("+m.size+") and saves it in this browser.";
-    $("go").textContent=cached()||(AI.web&&AI.webId===m.id)?"Plan it!":"Download model & plan it!";
-  }else{status(true,"\u25CF Built-in example");$("go").textContent="Plan it! (sample)";}}
-async function detectGpu(){try{AI.gpu=!!(navigator.gpu&&await navigator.gpu.requestAdapter());}catch(e){AI.gpu=false;}
-  if(!AI.gpu){var o=$("eng").querySelector("option[value=browser]");o.disabled=true;o.textContent="In my browser (not available on this device)";if($("eng").value==="browser")$("eng").value="sample";}
-  refresh();}
-async function webLoad(id){
-  if(AI.web&&AI.webId===id)return;
-  var pg=$("prog");pg.hidden=false;pg.value=0;
-  var cb=function(p){pg.value=Math.round((p&&p.progress||0)*100);say((p&&p.text)||"Loading model");};
-  say("Loading the AI engine\u2026");
-  if(!AI.mod)AI.mod=await import(WEBLLM_URL);
-  var list=(AI.mod.prebuiltAppConfig&&AI.mod.prebuiltAppConfig.model_list)||[];
-  if(!list.some(function(m){return m.model_id===id;}))throw new Error("That model isn\u2019t available in this engine version.");
-  if(!AI.web)AI.web=await AI.mod.CreateMLCEngine(id,{initProgressCallback:cb});else await AI.web.reload(id);
-  AI.webId=id;write("tka:wllm:"+id,true);pg.hidden=true;}
 function budget(){var b=parseFloat($("bud").value);return b>0?b:45;}
-async function genWeb(msgs,sch,t0,maxTok){
-  var acc="";
-  async function run(withSchema){
-    var req={messages:msgs,stream:true,temperature:0.5,top_p:0.9,max_tokens:maxTok||900};
-    if(withSchema)req.response_format={type:"json_object",schema:JSON.stringify(sch)};
-    var stream=await AI.web.chat.completions.create(req);
-    for await(var ch of stream){var t=ch.choices&&ch.choices[0]&&ch.choices[0].delta&&ch.choices[0].delta.content;
-      if(t){acc+=t;say((AI.tag||"Dreaming up an activity")+"\u2026 "+Math.round((Date.now()-t0)/1000)+"s, "+acc.length+" characters written");}
-      if(AI.stop)break;}}
-  try{await run(true);}catch(e){if(AI.stop)throw e;acc="";say("Trying a simpler mode\u2026");await run(false);}
-  return acc;}
-async function draft(){
-  if(AI.busy)return;
-  var text=$("idea").value.trim();if(!text){say("Type what the kids are doing first \u{1F642}");$("idea").focus();return;}
-  var eng=$("eng").value,age=+$("age").value,only=$("gm").value,slotSel=$("gs").value;
-  AI.busy=true;AI.stop=false;$("go").disabled=true;$("stop").hidden=false;
-  var t0=Date.now(),acc="",d=null;
-  try{
-    if(eng==="sample")d=sample(text,age,slotSel);
-    else{
-      if(AI.gpu===false)throw new Error("WebGPU isn\u2019t available in this browser. Try desktop Chrome or Edge, or use the sample.");
-      await webLoad(WM[$("wm").value].id);refresh();say("Dreaming up an activity\u2026");
-      acc=await genWeb(build(text,age,only,slotSel),schema(slotSel),t0);d=parse(acc);
-      if(!d){say("The AI\u2019s answer couldn\u2019t be read. Try again, or add more detail.");return;}
-    }
-    var a=toAct(d,text,age,only,slotSel),m=a.theme?a.month:(only!=="auto"?+only:V.m),r=place(a,m);
-    say("Added \u201C"+a.title+"\u201D to "+MN[m]+" "+yearOf(m)+(a.theme?" \u2022 "+a.theme:"")+", "+DAYS[r.day]+", "+a.slot+". Click it to see the steps. Review for safety before using.");
-    $("idea").value="";
-  }catch(e){
-    if(AI.stop){say("Stopped.");var dd=acc&&parse(acc);if(dd){var a2=toAct(dd,text,age,only,slotSel);place(a2,a2.theme?a2.month:V.m);say("Stopped. Added what was finished.");}}
-    else{say("Couldn\u2019t plan: "+(e&&e.message?e.message:e));$("prog").hidden=true;}
-  }finally{AI.busy=false;$("go").disabled=false;$("stop").hidden=true;}}
-var ITEM={type:"object",additionalProperties:false,required:["title","standards","summary","steps","materials","ageTip","estCost"],properties:{title:{type:"string"},standards:{type:"array",items:{type:"string",enum:Object.keys(STD)}},summary:{type:"string"},steps:{type:"array",items:{type:"string"}},materials:{type:"array",items:{type:"string"}},ageTip:{type:"string"},estCost:{type:"string"}}};
-function wkSchema(n){return {type:"object",additionalProperties:false,required:["activities"],properties:{activities:{type:"array",minItems:n,maxItems:n,items:ITEM}}};}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+function setProg(p,text){var pg=$("prog");if(p==null)pg.hidden=true;else{pg.hidden=false;pg.value=p;}$("dlnote").textContent=text||"";}
+function mbs(n){return Math.round(n/1048576).toLocaleString("en-US");}
+function friendly(e){var m=String(e&&e.message?e.message:e||"");
+  if(/DXGI|requestDevice|maxCompute|WebGPU|GPUAdapter|device.*(lost|removed)|D3D/i.test(m))return "the graphics driver stopped";
+  if(/memory|allocation|RangeError|out of|alloc/i.test(m))return "not enough memory";
+  if(/fetch|network|Failed to|load failed|NetworkError|HTTP|status/i.test(m))return "the download was interrupted, so check the internet connection";
+  return m.replace(/\s+/g," ").slice(0,120)||"unknown problem";}
+function isTablet(){var u=navigator.userAgent||"";return /iPad|Android|Tablet/i.test(u)||(navigator.maxTouchPoints>1&&/Mac/i.test(navigator.platform||""));}
+function lowMem(){return !!(navigator.deviceMemory&&navigator.deviceMemory<=4);}
+function engReady(){var e=$("eng").value;return e==="cpu"?(AI.active==="cpu"&&AI.cpuKey===$("cm").value&&!!AI.cpu):e==="gpu"?(AI.active==="gpu"&&!!AI.web):false;}
+function engCached(){var e=$("eng").value;return e==="cpu"?read("tka:gguf:"+$("cm").value,false)===true:e==="gpu"?read("tka:wllm:"+WM.id,false)===true:false;}
+function refresh(){
+  var e=$("eng").value,k=$("cm").value,ready=engReady(),cached=engCached();
+  write("tka:eng",e);$("cmrow").hidden=e!=="cpu";$("polrow").hidden=$("pm").hidden=e==="bank";
+  var bad=read("tka:gpubad",false)===true;
+  if(e==="bank"){status(true,"● No AI needed");$("setup").hidden=true;
+    $("wnote").textContent="Uses the built-in activity bank: instant, free, and works on every device.";}
+  else if(ready){status(true,"● AI helper ready");$("setup").hidden=true;
+    $("wnote").textContent=e==="cpu"?"Runs on this computer’s processor. Nothing leaves this device.":"Runs on the graphics card. Nothing leaves this device.";}
+  else if(cached){status(true,"● Saved on this device");$("setup").hidden=true;
+    $("wnote").textContent="The AI helper is saved here and wakes up when you need it.";}
+  else{status(null,"One-time download needed");$("setup").hidden=false;
+    $("setup").textContent="⬇ Set up AI helper ("+(e==="cpu"?CM[k].label:"about 1 GB")+")";
+    $("wnote").textContent="Planning works right away with the built-in bank. Set up the AI helper to personalize and rewrite activities.";}
+  if(e==="gpu"&&bad)$("wnote").textContent="Fast mode had trouble on this computer before. Reliable mode is the safer choice.";
+  $("go").textContent="Plan it!";tech();}
+function tech(){var el=$("tech");if(!el)return;var mt=null;try{if(AI.cpu&&typeof AI.cpu.isMultithread==="function")mt=AI.cpu.isMultithread();}catch(e){}
+  el.innerHTML="Cross-origin isolated (needed for multi-core speed): <b>"+(self.crossOriginIsolated?"yes":"no")+"</b><br>Processor threads reported: <b>"+(navigator.hardwareConcurrency||"unknown")+"</b><br>Memory hint: <b>"+(navigator.deviceMemory?navigator.deviceMemory+" GB":"unknown")+"</b><br>Graphics (WebGPU): <b>"+(AI.gpu===null?"checking":AI.gpu?"available":"not available")+"</b>"+(mt===null?"":"<br>Multi-core mode in use: <b>"+(mt?"yes":"no")+"</b>")+(self.crossOriginIsolated?"":"<br>Tip: put coi-serviceworker.js next to this page to unlock multi-core speed.");}
+async function detectGpu(){try{AI.gpu=!!(navigator.gpu&&await navigator.gpu.requestAdapter());}catch(e){AI.gpu=false;}
+  var o=$("eng").querySelector("option[value=gpu]");
+  if(!AI.gpu){o.disabled=true;o.textContent="Fast mode: not available on this device";if($("eng").value==="gpu")$("eng").value="cpu";}
+  refresh();}
+function switchCpu(){$("eng").value="cpu";write("tka:eng","cpu");}
+async function webLoad(){
+  if(AI.web)return;
+  setProg(0,"Loading the fast AI engine…");
+  if(!AI.webMod){try{AI.webMod=await import(WEBLLM_URL);}catch(e){setProg(null,"");throw e;}}
+  var list=(AI.webMod.prebuiltAppConfig&&AI.webMod.prebuiltAppConfig.model_list)||[];
+  if(!list.some(function(m){return m.model_id===WM.id;}))throw new Error("That model isn’t available in this engine version.");
+  AI.web=await AI.webMod.CreateMLCEngine(WM.id,{initProgressCallback:function(p){setProg(Math.round((p&&p.progress||0)*100),(p&&p.text)||"Loading the model");}});
+  write("tka:wllm:"+WM.id,true);setProg(null,"");}
+async function cpuLoad(key){
+  var m=CM[key];
+  if(AI.cpu&&AI.cpuKey===key)return;
+  if(AI.cpu){try{await AI.cpu.exit();}catch(e){}AI.cpu=null;AI.cpuKey=null;}
+  setProg(0,"Loading the AI engine…");
+  if(!AI.wmod){try{AI.wmod=await import(WLLAMA_BASE+"index.js");}catch(e){setProg(null,"");throw e;}}
+  var paths={"single-thread/wllama.wasm":WLLAMA_BASE+"single-thread/wllama.wasm","multi-thread/wllama.wasm":WLLAMA_BASE+"multi-thread/wllama.wasm"};
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
+  var lastErr=null;
+  for(var attempt=0;attempt<3;attempt++){
+    var w=null;
+    try{
+      w=new AI.wmod.Wllama(paths,{parallelDownloads:2,logger:{debug:function(){},log:function(){},warn:function(){},error:function(){}}});
+      var cfg={n_ctx:2048,progressCallback:function(p){
+        if(!p||!p.total)return;var pc=Math.round(100*p.loaded/p.total);
+        setProg(pc,p.loaded>=p.total?"Starting the AI helper…":"Downloading the AI helper: "+mbs(p.loaded)+" MB of "+mbs(p.total)+" MB. You can keep planning while this downloads.");}};
+      if(attempt===2)cfg.n_threads=1;
+      await w.loadModelFromUrl(m.url,cfg);
+      AI.cpu=w;AI.cpuKey=key;write("tka:gguf:"+key,true);setProg(null,"");return;
+    }catch(e){lastErr=e;try{if(w)await w.exit();}catch(x){}
+      if(attempt<2){setProg(null,"Hit a snag ("+friendly(e)+"). Trying again…");await sleep(1500*(attempt+1));}}
+  }
+  setProg(null,"");throw lastErr;
+}
+// Returns {ok, note}. Never throws. Falls back from Fast mode to Reliable mode, and from Balanced to Light.
+function ensureAI(){
+  if(AI.loading)return AI.loading;
+  AI.loading=doEnsure().then(function(r){AI.loading=null;refresh();return r;},function(e){AI.loading=null;refresh();return {ok:false,note:"The AI helper couldn’t start ("+friendly(e)+"). The built-in activity bank still works."};});
+  return AI.loading;}
+async function doEnsure(){
+  var e=$("eng").value,note="";
+  if(e==="bank")return {ok:false,note:""};
+  if(engReady())return {ok:true,note:""};
+  if(e==="gpu"){
+    if(AI.gpu===false||read("tka:gpubad",false)===true){switchCpu();note="Fast mode isn’t available on this computer, so Reliable mode was used instead.";}
+    else{try{await webLoad();AI.active="gpu";return {ok:true,note:""};}
+      catch(err){write("tka:gpubad",true);AI.web=null;AI.active=null;setProg(null,"");switchCpu();note="Fast mode couldn’t start on this computer ("+friendly(err)+"), so I switched to Reliable mode, which works on almost any computer.";}}
+  }
+  var key=$("cm").value;
+  try{await cpuLoad(key);AI.active="cpu";return {ok:true,note:note};}
+  catch(err){
+    if(key==="balanced"){
+      try{$("cm").value="light";write("tka:cm","light");await cpuLoad("light");AI.active="cpu";return {ok:true,note:(note?note+" ":"")+"The Balanced size was too big for this device ("+friendly(err)+"), so the Light size was used."};}
+      catch(e2){err=e2;}}
+    return {ok:false,note:(note?note+" ":"")+"The AI helper couldn’t start ("+friendly(err)+"). The built-in activity bank still works."};}
+}
+// Generate text with whichever engine is loaded.
+async function aiGen(msgs,o){
+  o=o||{};var max=o.max||420,temp=o.temp==null?0.7:o.temp,acc="";
+  if(AI.active==="gpu"){
+    try{var stream=await AI.web.chat.completions.create({messages:msgs,stream:true,temperature:temp,top_p:0.9,max_tokens:max});
+      for await(var ch of stream){var t=ch.choices&&ch.choices[0]&&ch.choices[0].delta&&ch.choices[0].delta.content;
+        if(t){acc+=t;if(o.onText)o.onText(acc);}if(AI.stop){try{AI.web.interruptGenerate();}catch(e){}break;}}
+    }catch(err){if(!AI.stop){write("tka:gpubad",true);AI.web=null;AI.active=null;switchCpu();
+        throw new Error("Fast mode stopped working ("+friendly(err)+"). Reliable mode is selected now, so just try again.");}}
+    return acc;}
+  var prompt=msgs.map(function(m){return "<|im_start|>"+m.role+"\n"+m.content+"<|im_end|>\n";}).join("")+"<|im_start|>assistant\n";
+  var res=await AI.cpu.createCompletion(prompt,{nPredict:max,sampling:{temp:temp,top_k:40,top_p:0.9,penalty_repeat:1.1},
+    onNewToken:function(tok,piece,text,opt){acc=text;
+      if(AI.stop||text.indexOf("<|im_end|>")>=0||text.indexOf("<|endoftext|>")>=0){try{opt.abortSignal();}catch(e){}}
+      if(o.onText)o.onText(text);}});
+  return String(acc||res||"");}
+// ---------- Labeled-line format (easy for small models) ----------
+function toLab(a){return "TITLE: "+(a.title||"")+"\nSUMMARY: "+(a.summary||"")+"\nMATERIALS: "+(a.materials||[]).join("; ")+"\nSTEPS: "+(a.steps||[]).join(" | ")+"\nAGE TIP: "+(a.tip||"")+"\nCOST: "+(a.cost||"")+"\nSTANDARDS: "+(a.std||[]).join(", ");}
+function parseLab(txt){
+  txt=String(txt||"").replace(/<think>[\s\S]*?<\/think>/g,"").replace(/<\|im_end\|>[\s\S]*$/,"").replace(/<\|endoftext\|>[\s\S]*$/,"").trim();
+  var out={},cur=null,re=/^[\s*#>\-]*\**\s*(TITLE|SUMMARY|MATERIALS|STEPS|AGE TIP|COST|STANDARDS)\s*\**\s*:\s*\**\s*(.*)$/i;
+  txt.split(/\r?\n/).forEach(function(line){var m=line.match(re);
+    if(m){cur=m[1].toUpperCase();out[cur]=m[2]||"";}else if(cur&&line.trim())out[cur]+="\n"+line.trim();});
+  var one=function(s,n){return String(s||"").replace(/[*_`]/g,"").replace(/\s+/g," ").trim().replace(/^["“]|["”]$/g,"").slice(0,n);};
+  var bullets=function(s){return String(s||"").replace(/^[\s\-•*]+/,"");};
+  var mats=String(out.MATERIALS||"").split(/;|\n/).map(function(x){return one(bullets(x),80);}).filter(Boolean);
+  if(mats.length===1&&mats[0].indexOf(",")>0)mats=mats[0].split(/,\s*/).map(function(x){return one(x,80);}).filter(Boolean);
+  var st=String(out.STEPS||"").split(/\s*\|\s*|\n/).map(function(x){return one(bullets(x).replace(/^\d+[.)]\s*/,""),300);}).filter(Boolean);
+  if(st.length===1)st=st[0].split(/\s*\d+[.)]\s+/).map(function(x){return one(x,300);}).filter(Boolean);
+  var std=[];(String(out.STANDARDS||"").toUpperCase().match(/\b(SE|AL|LL|MA|SC|PH|CA)\b/g)||[]).forEach(function(k){if(std.indexOf(k)<0)std.push(k);});
+  var d={title:one(out.TITLE,70),summary:one(out.SUMMARY,400),materials:mats.slice(0,8),steps:st.slice(0,6),ageTip:one(out["AGE TIP"],300),estCost:one(out.COST,40),standards:std.slice(0,3)};
+  return (d.title&&d.steps.length>=2)?d:null;}
+function applyAI(a,d,age){var tcs=tipCost(d,age||a.age||3);
+  if(d.title)a.title=d.title;if(d.summary)a.summary=d.summary;
+  if(d.materials.length)a.materials=d.materials;if(d.steps.length)a.steps=d.steps;
+  a.tip=tcs.tip.slice(0,300);if(tcs.cost)a.cost=tcs.cost.slice(0,40);
+  var first=ROWSTD[a.slot],s=(d.standards||[]).filter(function(k){return STD[k]&&k!==first;});a.std=[first].concat(s).slice(0,3);a.pol=true;}
+async function rewriteAct(a,instr,age){
+  var msgs=[{role:"system",content:SYS2},{role:"user",content:"Today is "+todayStr()+".\nClass age: "+AGEL[age]+"\nAge guidance: "+AGEG[age]+"\nMonthly theme: "+(a.theme||"none")+"\nPlanner row: "+a.slot+"\nWeekly supply budget: $"+budget()+" for all five weekly activities, so keep supplies cheap.\n\nCurrent activity:\n"+toLab({title:a.title,summary:a.summary,materials:a.materials,steps:a.steps,tip:a.tip,cost:a.cost,std:a.std})+"\n\nTask: "+instr+"\nWrite the finished activity now in exactly the same format."}];
+  var t0=Date.now();
+  var txt=await aiGen(msgs,{max:420,temp:0.7,onText:function(t){say((AI.tag||"The AI is writing")+"… "+Math.round((Date.now()-t0)/1000)+"s, about "+t.split(/\s+/).length+" words");}});
+  return AI.stop?null:parseLab(txt);}
+function busyUI(b){$("go").disabled=$("mo").disabled=$("pm").disabled=b;$("stop").hidden=!b;}
+// ---------- Helpers shared by the planners ----------
 var GROUPS={LL:["Song & Fingerplays","Story","Literacy"],CA:["Art","Music & Movement"],MA:["Math"],SC:["Science"],PH:["Gross Motor Skill"]};
 function shuf(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;}return a;}
-function pickRows(n,use){var keys=shuf(Object.keys(GROUPS)).slice(0,n),rows=keys.map(function(g){var l=shuf(GROUPS[g]);l.sort(function(a,b){return (use[a]||0)-(use[b]||0);});return l[0];});
+// A teacher's monthly focus (like "dinosaurs and counting") gently steers which planner rows get used.
+var FOCUSW=[[/count|number|math|shape|pattern|measur|sort/,"MA"],[/letter|read|book|stor|rhyme|song|sing|word|alphabet|writ|sound/,"LL"],[/\bart|paint|draw|craft|colou?r|music|danc|instrument|rhythm/,"CA"],[/scien|experiment|nature|weather|explor|discover|plant|animal|bug/,"SC"],[/mov|run|jump|outside|outdoor|active|balance|climb|gross|motor/,"PH"]];
+function focusPref(t){t=String(t||"").toLowerCase();var out=[];FOCUSW.forEach(function(f){if(f[0].test(t))out.push(f[1]);});return out;}
+function focusRow(g,t){t=String(t||"").toLowerCase();
+  if(g==="CA")return /music|danc|instrument|rhythm/.test(t)?"Music & Movement":/\bart|paint|draw|craft|colou?r/.test(t)?"Art":null;
+  if(g==="LL")return /song|sing|rhyme|finger/.test(t)?"Song & Fingerplays":/book|stor|read/.test(t)?"Story":/letter|word|alphabet|writ|sound/.test(t)?"Literacy":null;
+  return null;}
+function pickRows(n,use,focus){
+  var pref=focusPref(focus),keys=shuf(Object.keys(GROUPS));
+  keys.sort(function(a,b){return (pref.indexOf(b)>=0)-(pref.indexOf(a)>=0);});
+  keys=keys.slice(0,n);
+  var rows=keys.map(function(g){var fr=focusRow(g,focus);
+    if(fr&&GROUPS[g].indexOf(fr)>=0&&Math.random()<0.6)return fr;
+    var l=shuf(GROUPS[g]);l.sort(function(a,b){return (use[a]||0)-(use[b]||0);});return l[0];});
   rows.forEach(function(r){use[r]=(use[r]||0)+1;});return shuf(rows);}
 function tipCost(d,age){var tip=String(d.ageTip||"").trim(),cost=String(d.estCost||"").trim();
   if(/\$\s?\d|\bcosts?\b|\bbudget\b/i.test(tip)){if(!cost)cost=tip;tip="";}
   return {tip:tip||AGEG[age],cost:cost};}
+// ---------- Plan it! (bank first, AI polishes) ----------
+async function draft(){
+  if(AI.busy)return;
+  var text=$("idea").value.trim();if(!text){say("Type what the kids are doing first \u{1F642}");$("idea").focus();return;}
+  var age=+$("age").value,only=$("gm").value,slotSel=$("gs").value;
+  AI.busy=true;AI.stop=false;busyUI(true);
+  try{
+    var slot=slotSel!=="auto"?slotSel:guessSlot(text),th=scoreTheme(text,only)||fbTheme(only);
+    var d=bankAct(th.t,slot,age,text,null),a=toAct(d,text,age,only,slotSel);
+    a.theme=th.t;a.month=th.m;
+    var r=place(a,th.m),where=MN[th.m]+" "+yearOf(th.m)+" • "+a.theme+", "+DAYS[r.day]+", "+a.slot;
+    if($("eng").value==="bank"){say("Added “"+a.title+"” ("+where+"). Click it to see the steps.");$("idea").value="";return;}
+    if(!engReady()&&!engCached()){say("Added a starter activity ("+where+") from the built-in bank. To have the AI rewrite activities around your ideas, press “Set up AI helper” in this box (one-time download).");$("setup").hidden=false;return;}
+    say("Added a starter activity ("+where+"). Now the AI is making it more creative…");
+    var eng=await ensureAI();
+    if(!eng.ok){say("Added “"+a.title+"” from the built-in bank ("+where+"). "+eng.note);return;}
+    AI.tag="The AI is writing";
+    var nd=await rewriteAct(a,"Rebuild this activity around the teacher's idea: “"+text+"”. Keep the planner row ("+a.slot+") and the theme.",age);
+    if(nd){applyAI(a,nd,age);save();render();$("idea").value="";say("Done! “"+a.title+"” is in "+where+". Click it to see the steps, and review it for safety."+(eng.note?" "+eng.note:""));}
+    else say(AI.stop?"Stopped. The starter activity “"+a.title+"” was kept ("+where+").":"The AI’s answer couldn’t be read, so the starter activity “"+a.title+"” was kept ("+where+"). You can edit it and use Ask AI.");
+  }catch(e){say("Couldn’t finish the AI step: "+(e&&e.message?e.message:e)+" The starter activity is still on your calendar.");}
+  finally{AI.tag="";AI.busy=false;busyUI(false);}}
+// ---------- Plan the whole month: instant bank plan steered by the teacher's focus, then AI polish a few at a time ----------
+function focusKey(m){return yearOf(m)+"-"+m;}
+function getFocus(m){return String(read("tka:focus",{})[focusKey(m)]||"");}
+function setFocus(m,t){var o=read("tka:focus",{});if(t)o[focusKey(m)]=t;else delete o[focusKey(m)];write("tka:focus",o);}
+function polLimit(){var n=parseInt($("pol").value,10);return n>0?n:5;}
+async function polishLoop(list,age,focus,limit){
+  var todo=list.filter(function(a){return !a.pol;}).slice(0,limit),done=0;
+  for(var i=0;i<todo.length&&!AI.stop;i++){
+    AI.tag="Polishing activity "+(i+1)+" of "+todo.length;
+    var nd=await rewriteAct(todo[i],"Make it more creative and memorable with a fun hook children will love. Keep the planner row ("+todo[i].slot+"), the theme, and cheap supplies."+(focus?" The teacher's focus for this month is “"+focus+"”, so work it in naturally where it fits.":""),age);
+    if(nd){applyAI(todo[i],nd,age);done++;save();render();}}
+  return {done:done,total:todo.length,left:list.filter(function(a){return !a.pol;}).length};}
+function polMsg(r,eng){
+  var more=r.left?" "+r.left+" still have their starter versions. Press “Polish more with AI” whenever you have a few minutes.":" Every planned activity is polished.";
+  return (AI.stop?"Stopped. ":"Done! ")+r.done+" activities polished by the AI."+more+" Review everything for safety and cost."+(eng&&eng.note?" "+eng.note:"");}
 async function monthPlan(){
   if(AI.busy)return;
-  var eng=$("eng").value,age=+$("age").value,m=$("gm").value==="auto"?V.m:+$("gm").value,extra=$("idea").value.trim();
-  if(eng!=="browser"){say("Planning a whole month needs the AI. Choose \u201CIn my browser\u201D.");return;}
-  if(AI.gpu===false){say("WebGPU isn\u2019t available in this browser. Try desktop Chrome or Edge.");return;}
+  var age=+$("age").value,m=$("gm").value==="auto"?V.m:+$("gm").value;
   fixAy(m);var tot=0;weeks(m).forEach(function(w){for(var q=0;q<5;q++)if(okDay(w,q,m))tot++;});
   if(!tot){say("There are no upcoming school days left in "+MN[m]+".");return;}
-  if(!confirm("Plan the "+tot+" remaining school days in "+MN[m]+" "+yearOf(m)+"? This takes several minutes. Existing activities stay."))return;
-  AI.busy=true;AI.stop=false;$("go").disabled=$("mo").disabled=true;$("stop").hidden=false;
-  var ws=weeks(m),done=0,bud=budget(),t0=Date.now(),use={};
+  var typed=$("idea").value.trim().slice(0,200),focus=typed||getFocus(m);
+  if(!confirm("Plan the "+tot+" remaining school days in "+MN[m]+" "+yearOf(m)+(focus?", focusing on “"+focus+"”":"")+"? It fills in instantly. Existing activities stay."))return;
+  if(typed){setFocus(m,typed);$("idea").value="";}
+  AI.busy=true;AI.stop=false;busyUI(true);
+  var made=[];
   try{
-    await webLoad(WM[$("wm").value].id);refresh();
-    for(var i=0;i<ws.length&&!AI.stop;i++){
-      var k=ws[i],p=plan(k),days=[];
-      for(var d=0;d<5;d++){var dt=pd(k);dt.setDate(dt.getDate()+d);if(okDay(k,d,m))days.push(d);}
-      if(!days.length)continue;
-      var wt=p.theme||T[m][i%T[m].length];
-      var rows=pickRows(days.length,use);
-      AI.tag="Week "+(i+1)+" of "+ws.length+" ("+wt+"), "+done+" added so far";
-      var lines=days.map(function(x,j){return DAYS[x]+" "+fmtD(k,x)+": planner row \""+rows[j]+"\"";}).join("\n");
-      var msgs=[{role:"system",content:SYS},{role:"user",content:"Today is "+todayStr()+". Plan "+days.length+" activities, one for each of these upcoming school days, for the week themed \u201C"+wt+"\u201D in "+MN[m]+".\nChild age: "+AGEL[age]+"\nAge guidance: "+AGEG[age]+"\nTotal supply budget for ALL "+days.length+" activities: $"+bud+". Use free, household, recycled or dollar-store items, and give a rough cost for each in 'estCost'.\nUse these planner rows:\n"+lines+"\nTogether the week should touch every learning area; include Social & Emotional (SE) or Approaches to Learning (AL) in at least two. Make each activity cute and memorable: a fun title and a kid-friendly hook. Keep summaries to 2 sentences and use 3 short steps. 'ageTip' is one sentence on adapting the activity to this age and never mentions cost; 'estCost' is the rough supply cost."+(extra?"\nTeacher notes: "+extra:"")+"\nReturn JSON {\"activities\":[...]} with exactly "+days.length+" items in the order above."}];
-      var acc=await genWeb(msgs,wkSchema(days.length),t0,2000),r=parse(acc),list=r&&Array.isArray(r.activities)?r.activities:[];
-      list.slice(0,days.length).forEach(function(x,j){
-        var a=toAct(x,wt,age,String(m),rows[j]);a.theme=wt;a.month=m;a.day=days[j];
-        if(a.std.indexOf(ROWSTD[rows[j]])<0)a.std=[ROWSTD[rows[j]]].concat(a.std).slice(0,3);
-        if(a.std.length<2)a.std.push(shuf(["SE","AL"])[0]);
-        p.acts.push(a);done++;});
-      save();V.m=m;V.wk=k;V.view="plan";render();
-    }
-    say(AI.stop?"Stopped. Added "+done+" activities.":"Done! Added "+done+" activities to "+MN[m]+". Check the By Standard tab for coverage, and review everything for safety and cost.");
-  }catch(e){if(AI.stop)say("Stopped. Added "+done+" activities.");else{say("Couldn\u2019t finish: "+(e&&e.message?e.message:e)+(done?" ("+done+" activities were added.)":""));$("prog").hidden=true;}}
-  finally{AI.tag="";AI.busy=false;$("go").disabled=$("mo").disabled=false;$("stop").hidden=true;save();render();}
+    var ws=weeks(m),use={},avoid={},firstK=null;
+    ws.forEach(function(k,i){
+      var p=plan(k),days=[];
+      for(var d=0;d<5;d++)if(okDay(k,d,m))days.push(d);
+      if(!days.length)return;
+      var wt=p.theme||T[m][i%T[m].length],rows=pickRows(days.length,use,focus);
+      days.forEach(function(d,j){var dd=bankAct(wt,rows[j],age,"",avoid),a=toAct(dd,wt,age,String(m),rows[j]);
+        a.theme=wt;a.month=m;a.day=d;a.bk=true;
+        if(focus)a.summary=(a.summary+" Class focus: “"+focus.slice(0,60)+"”.").slice(0,400);
+        p.acts.push(a);made.push(a);});
+      if(!firstK)firstK=k;});
+    save();V.m=m;V.wk=firstK||V.wk;V.view="plan";render();
+    var base="Planned "+made.length+" activities in "+MN[m]+" instantly"+(focus?", leaning toward your focus “"+focus.slice(0,60)+"”":"")+". ";
+    if($("eng").value==="bank"){say(base+"Check the By Standard tab for coverage, then click any activity to edit it.");return;}
+    if(!engReady()&&!engCached()){say(base+"To have the AI make them more creative, press “Set up AI helper” in the box above (one-time download).");$("setup").hidden=false;return;}
+    say(base+"Now the AI is polishing the soonest "+Math.min(polLimit(),made.length)+" one at a time. You can keep working or press Stop.");
+    var eng=await ensureAI();
+    if(!eng.ok){say(base+eng.note);return;}
+    var r=await polishLoop(made,age,focus,polLimit());
+    say(base+polMsg(r,eng));
+  }catch(e){say("Planned "+made.length+" activities, but the AI step stopped: "+(e&&e.message?e.message:e));}
+  finally{AI.tag="";AI.busy=false;busyUI(false);save();render();}
+}
+async function polishMore(){
+  if(AI.busy)return;
+  var age=+$("age").value,m=$("gm").value==="auto"?V.m:+$("gm").value,typed=$("idea").value.trim().slice(0,200);
+  if(typed)setFocus(m,typed);
+  var focus=getFocus(m);
+  if($("eng").value==="bank"){say("AI help is switched off. Choose Reliable mode in the AI helper box.");return;}
+  if(!engReady()&&!engCached()){say("Set up the AI helper first (one-time download), then press this button again.");$("setup").hidden=false;return;}
+  var list=monthActs(m).filter(function(x){return x.a.bk&&!x.a.pol&&x.d>=today0();}).sort(function(a,b){return a.d-b.d;}).map(function(x){return x.a;});
+  if(!list.length){say("Every planned activity in "+MN[m]+" has already been polished or edited by a teacher.");return;}
+  AI.busy=true;AI.stop=false;busyUI(true);
+  try{
+    var eng=await ensureAI();
+    if(!eng.ok){say(eng.note);return;}
+    say("Polishing the soonest "+Math.min(polLimit(),list.length)+" of "+list.length+" activities. You can keep working or press Stop.");
+    var r=await polishLoop(list,age,focus,polLimit());
+    say(polMsg(r,eng));
+  }catch(e){say("The AI step stopped: "+(e&&e.message?e.message:e));}
+  finally{AI.tag="";AI.busy=false;busyUI(false);save();render();}
 }
 $("mo").onclick=monthPlan;
+$("pm").onclick=polishMore;
 // ---------- Auto-size text boxes ----------
 function autosz(el){el.style.height="auto";el.style.height=(el.scrollHeight+4)+"px";}
 function autoAll(){Array.prototype.forEach.call(document.querySelectorAll("#dbody textarea.auto"),autosz);}
@@ -597,25 +923,30 @@ function renderSign(){
   h+="<section class=\"card\"><h2>\u2728 Ask the AI for signs</h2><p class=\"note\">Suggests simple signs for this week\u2019s theme and the class age ("+AGEL[$("age").value]+", set on the planner page). Double-check every suggestion.</p><div class=\"btns\"><button class=\"btn\" id=\"sg-go\" type=\"button\">Suggest signs</button><button class=\"btn alt\" id=\"sg-stop\" type=\"button\" hidden>Stop</button></div><div id=\"sg-msg\" class=\"note\" aria-live=\"polite\"></div><div class=\"sgs\">"+SG.sug.map(function(x,i){return signCard(x.w,x.how,"<button class=\"btn sm\" data-sgs=\""+i+"\" type=\"button\">Add to week</button>");}).join("")+"</div></section>";
   h+="<section class=\"card\"><h2>Sign library</h2><div class=\"row\"><select id=\"sg-c\" aria-label=\"Category\">"+SCAT.map(function(c){return "<option"+(c===SG.cat?" selected":"")+">"+esc(c)+"</option>";}).join("")+"</select><input type=\"text\" id=\"sg-q\" placeholder=\"Search signs\" maxlength=\"40\" style=\"flex:1;min-width:160px\" value=\""+esc(SG.q)+"\"></div><div class=\"sgs\" id=\"sg-lib\" style=\"margin-top:10px\"></div></section>";
   $("pg-sign").innerHTML=h;renderLib();}
+function libSuggest(p,n){var have=(p.signs||[]).map(function(x){return x.w.toLowerCase();});
+  return shuf(SIGNS.filter(function(x){return have.indexOf(x[0].toLowerCase())<0;})).slice(0,n).map(function(x){return {w:x[0],how:x[2]};});}
 async function signAI(){
   if(AI.busy)return;var m=$("sg-msg");
-  if($("eng").value!=="browser"){m.textContent="AI help needs \u201CIn my browser\u201D selected on the planner page.";return;}
-  if(AI.gpu===false){m.textContent="WebGPU isn\u2019t available in this browser. Try desktop Chrome or Edge.";return;}
   var p=plan(V.wk),age=+$("age").value,th=p.theme||(p.acts[0]&&p.acts[0].theme)||(MN[V.m]+" classroom");
-  AI.busy=true;AI.stop=false;$("sg-go").disabled=true;$("go").disabled=$("mo").disabled=true;$("sg-stop").hidden=false;
-  var t0=Date.now(),acc="",ok=false;
+  var fallback=function(why){SG.sug=libSuggest(p,4);renderSign();$("sg-msg").textContent=why+" Here are ideas from the built-in library instead."; };
+  if($("eng").value==="bank"){fallback("AI help is switched off.");return;}
+  if(!engReady()&&!engCached()){fallback("The AI helper isn’t set up yet.");return;}
+  AI.busy=true;AI.stop=false;busyUI(true);$("sg-go").disabled=true;$("sg-stop").hidden=false;
   try{
-    await webLoad(WM[$("wm").value].id);refresh();AI.tag="Finding signs";
-    var sch={type:"object",additionalProperties:false,required:["signs"],properties:{signs:{type:"array",minItems:3,maxItems:5,items:{type:"object",additionalProperties:false,required:["word","how"],properties:{word:{type:"string"},how:{type:"string"}}}}}};
+    var eng=await ensureAI();
+    if(!eng.ok){fallback(eng.note);return;}
+    AI.tag="Finding signs";
     var have=(p.signs||[]).map(function(x){return x.w;}).join(", ")||"none";
-    var msgs=[{role:"system",content:"You are an early-childhood teacher who knows basic American Sign Language (ASL). Only suggest common, standard ASL signs you are confident about, and describe each in plain, short words a teacher can follow. Respond with JSON only."},{role:"user",content:"Today is "+todayStr()+". Suggest 4 simple ASL signs for the weekly theme \u201C"+th+"\u201D for "+AGEL[age]+". Signs already planned (do not repeat): "+have+". Return JSON {\"signs\":[{\"word\":\"...\",\"how\":\"...\"}]}."}];
-    acc=await genWeb(msgs,sch,t0,700);
-    if(AI.stop){m.textContent="Stopped.";return;}
-    var d=parse(acc),l=d&&Array.isArray(d.signs)?d.signs:[];
-    SG.sug=l.map(function(x){return {w:String(x.word||"").trim().slice(0,30),how:String(x.how||"").trim().slice(0,200)};}).filter(function(x){return x.w;}).slice(0,5);
-    ok=SG.sug.length>0;renderSign();$("sg-msg").textContent=ok?"Here are some ideas. Check each one, then add the ones you like.":"The AI\u2019s answer couldn\u2019t be read. Try again.";
-  }catch(e){var mm=$("sg-msg");if(mm)mm.textContent="Couldn\u2019t finish: "+(e&&e.message?e.message:e);}
-  finally{AI.tag="";AI.busy=false;var g=$("sg-go");if(g)g.disabled=false;var st=$("sg-stop");if(st)st.hidden=true;$("go").disabled=$("mo").disabled=false;}}
+    var msgs=[{role:"system",content:"You are an early-childhood teacher who knows basic American Sign Language (ASL). Only suggest common, standard ASL signs you are confident about, and describe each in plain, short words a teacher can follow. Answer with exactly four lines in this format and nothing else:\nSIGN: word | how to make the sign"},
+      {role:"user",content:"Today is "+todayStr()+". Suggest four simple ASL signs for the weekly theme “"+th+"” for "+AGEL[age]+". Signs already planned (do not repeat): "+have+"."}];
+    var t0=Date.now(),txt=await aiGen(msgs,{max:300,temp:0.5,onText:function(t){say("Finding signs… "+Math.round((Date.now()-t0)/1000)+"s");}});
+    if(AI.stop){$("sg-msg").textContent="Stopped.";return;}
+    var out=[];String(txt).split(/\r?\n/).forEach(function(line){var mm=line.match(/SIGN\s*:\s*([^|]+)\|\s*(.+)$/i);
+      if(mm){var w=mm[1].replace(/[*_`"]/g,"").trim().slice(0,30),h=mm[2].replace(/[*_`]/g,"").trim().slice(0,200);if(w&&h&&out.length<5)out.push({w:w,how:h});}});
+    if(!out.length){fallback("The AI’s answer couldn’t be read.");return;}
+    SG.sug=out;renderSign();$("sg-msg").textContent="Here are some ideas. Check each one, then add the ones you like."+(eng.note?" "+eng.note:"");
+  }catch(e){fallback("Couldn’t finish ("+(e&&e.message?e.message:e)+").");}
+  finally{AI.tag="";AI.busy=false;busyUI(false);var g=$("sg-go");if(g)g.disabled=false;var st=$("sg-stop");if(st)st.hidden=true;}}
 function setPg(pg){V.pg=pg;$("pg-plan").hidden=pg!=="plan";$("pg-sign").hidden=pg!=="sign";
   Array.prototype.forEach.call(document.querySelectorAll(".navb"),function(b){b.classList.toggle("on",b.dataset.pg===pg);});
   if(pg==="sign")renderSign();else render();}
@@ -648,10 +979,18 @@ $("go").onclick=draft;
 function stopAI(){AI.stop=true;try{if(AI.web&&AI.web.interruptGenerate)AI.web.interruptGenerate();}catch(e){}}
 $("stop").onclick=stopAI;
 $("eng").onchange=function(){say("");refresh();};
-$("wm").onchange=function(){write("tka:wm",$("wm").value);refresh();};
+$("pol").onchange=function(){write("tka:pol",$("pol").value);};
+$("cm").onchange=function(){write("tka:cm",$("cm").value);refresh();};
+$("setup").onclick=async function(){
+  if(AI.busy||AI.loading)return;var b=$("setup");b.disabled=true;
+  say("Setting up the AI helper…");
+  var r=await ensureAI();b.disabled=false;
+  say(r.ok?"The AI helper is ready! Plan it!, Ask AI, and the sign suggestions can use it now."+(r.note?" "+r.note:""):(r.note||"The AI helper couldn’t start."));};
 (function init(){
-  var sv=read("tka:eng","sample");$("eng").value=sv==="browser"?"browser":"sample";
-  var wm=read("tka:wm","small");$("wm").value=WM[wm]?wm:"small";
+  var sv=read("tka:eng","cpu");sv=sv==="browser"?"cpu":sv==="sample"?"bank":sv;if(["cpu","gpu","bank"].indexOf(sv)<0)sv="cpu";
+  $("eng").value=sv;
+  var dm=(isTablet()||lowMem())?"light":"balanced",cm=read("tka:cm",dm);$("cm").value=CM[cm]?cm:dm;
+  var pv=String(read("tka:pol","5"));$("pol").value=["5","10","999"].indexOf(pv)>=0?pv:"5";
   V.wk=defWeek(V.m);refresh();detectGpu();render();})();
 </script>
 </body>
