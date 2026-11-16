@@ -163,9 +163,9 @@ body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
       <p class="note">&#10024; <b>Plan it!</b> and <b>Plan the week</b> imagine brand-new activities from your idea. <b>Plan the whole month</b> fills in instantly from the activity bank, and the wand adds extra imagination whenever you like.</p>
       <div id="msg" aria-live="polite"></div>
     </div><div>
-      <label class="f" for="gm">Which month&rsquo;s theme?</label><select id="gm"></select>
-      <label class="f" for="gs">Planner row</label><select id="gs"></select>
-      <label class="f" for="gd">Which day?</label><select id="gd"></select>
+      <label class="f" for="gdate">Which date?</label><input type="date" id="gdate"><small class="note" id="gdnote"></small>
+      <label class="f" for="gs">Activity type</label><select id="gs"></select>
+      <div hidden><select id="gm"></select><select id="gd"></select></div>
       <label class="f" for="bud">Weekly supply budget ($)</label><input type="text" id="bud" inputmode="numeric" maxlength="4" value="45">
       <label class="f">AI helper <span class="st" id="st"></span></label>
       <div class="btns" style="margin-top:6px"><button class="btn alt" id="setup" type="button" hidden>Set up AI helper</button></div>
@@ -934,7 +934,7 @@ async function draft(){
       if(AI.stop){noteCancel("Cancelled. Nothing was added."+(AI.loading?" The AI helper keeps getting ready in the background, so it will be quicker next time.":""));return;}}
     var fromAI=!!a;
     if(!a){var bd=bankAct(th.t,slot,age,text,null);a=toAct(bd,text,age,only,slotSel);a.theme=th.t;a.month=th.m;}
-    var r=place(a,th.m),where=MN[th.m]+" "+yearOf(th.m)+" • "+a.theme+", "+DAYS[r.day]+", "+a.slot;
+    var r=place(a,th.m),wm=(r.m!=null?r.m:th.m),where=MN[wm]+" "+yearOf(wm)+" • "+a.theme+", "+DAYS[r.day]+", "+a.slot;
     if(fromAI){$("idea").value="";say("Ta-da! “"+a.title+"” is in "+where+". Click it to see the steps, and review it for safety."+(eng.note?" "+eng.note:"")+(AI.lastSec?" (Took "+AI.lastSec+" seconds.)":""));if(AI.lastSec>40)await speedCheck();}
     else if($("eng").value==="bank")say("Added “"+a.title+"” ("+where+") from the built-in bank. Click it to see the steps.");
     else say("Added “"+a.title+"” ("+where+") from the built-in bank, because "+(eng.ok?"the AI couldn’t make a safe, creative version this time. Press Plan it! again to retry":whyNot(eng,"the AI helper isn’t ready yet"))+". You can edit it and use Ask AI.");
@@ -1708,7 +1708,7 @@ buildSYSG();
 var SDW=null;
 function sdRender(){
   var h=SDW.list.map(function(s,i){return "<div class=\"sdrow\"><input type=\"color\" data-i=\""+i+"\" data-f=\"color\" value=\""+esc(s.color)+"\" aria-label=\"Color\"><input type=\"text\" data-i=\""+i+"\" data-f=\"name\" maxlength=\"60\" value=\""+esc(s.name)+"\" aria-label=\"Standard name\"><input type=\"text\" data-i=\""+i+"\" data-f=\"kw\" maxlength=\"240\" value=\""+esc(s.kw)+"\" placeholder=\"keywords, like: count, shape, sort\" aria-label=\"Keywords\"><button type=\"button\" class=\"btn alt sm\" data-del=\""+i+"\" aria-label=\"Delete\">&#10005;</button></div>";}).join("");
-  h+="<div class=\"btns\"><button class=\"btn alt sm\" id=\"sd-add\" type=\"button\">+ Add a standard</button></div><h4 style=\"color:var(--leaf);margin:14px 0 4px\">Which standard does each planner row count toward?</h4>"+
+  h+="<div class=\"btns\"><button class=\"btn alt sm\" id=\"sd-add\" type=\"button\">+ Add a standard</button></div><h4 style=\"color:var(--leaf);margin:14px 0 4px\">Which standard does each activity type count toward?</h4>"+
     ROWS.map(function(r,i){return "<div class=\"sdrow\"><span style=\"flex:1\">"+esc(r)+"</span><select data-row=\""+i+"\" style=\"width:auto;flex:1\">"+SDW.list.map(function(s){return "<option value=\""+esc(s.k)+"\""+(SDW.rows[r]===s.k?" selected":"")+">"+esc(s.name||"(unnamed)")+"</option>";}).join("")+"</select></div>";}).join("");
   $("sd-body").innerHTML=h;}
 function stdOpen(){
@@ -1794,6 +1794,28 @@ function tipCost(d,age,slot){var tip=String(d.ageTip||"").trim(),cost=String(d.e
   if(!cost)cost=costLabel(d.materials);
   return {tip:tip,cost:cost};}
 
+function isoOf(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function parseDate(s){var a=String(s||"").split("-");return a.length===3?new Date(+a[0],+a[1]-1,+a[2]):null;}
+function mondayOf(d){var m=new Date(d.getFullYear(),d.getMonth(),d.getDate());m.setDate(m.getDate()-((m.getDay()+6)%7));return m;}
+function nextWeekday(d){d=new Date(d.getFullYear(),d.getMonth(),d.getDate());while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()+1);return d;}
+function gDate(){var d=parseDate($("gdate").value);if(!d||isNaN(d))return null;if(d<today0())d=today0();return nextWeekday(d);}
+function gdInit(){var g=$("gdate");g.min=isoOf(today0());if(!g.value)g.value=isoOf(nextWeekday(today0()));
+  g.onchange=function(){var d=parseDate(g.value),n=$("gdnote"),msg="";if(!d||isNaN(d)){g.value=isoOf(nextWeekday(today0()));return;}
+    if(d<today0()){d=today0();msg="That date has passed, so I used today. ";}var d2=nextWeekday(d);if(+d2!==+d){msg+="School runs Monday to Friday, so I moved it to "+DAYS[(d2.getDay()+6)%7]+". ";d=d2;}
+    g.value=isoOf(d);n.textContent=msg;};}
+gdInit();
+var __place=place;
+place=function(a,m){var d=gDate();if(!d)return __place(a,m);var mo=d.getMonth();try{fixAy(mo);}catch(e){}
+  var k=isoOf(mondayOf(d)),p=plan(k);a.day=(d.getDay()+6)%7;a.month=mo;a.theme=themeFor(p,a.theme);p.acts.push(a);V.m=mo;V.wk=k;V.view="plan";save();render();return {k:k,day:a.day,m:mo};};
+$("mh").onclick=function(){var d=gDate()||nextWeekday(today0()),k=isoOf(mondayOf(d)),r=$("gs").value==="auto"?ROWS[0]:$("gs").value;V.m=d.getMonth();openEd(k,newAct(k,(d.getDay()+6)%7,r,$("idea").value.trim()),true);};
+var __monthPlan=monthPlan;
+monthPlan=function(){
+  if(AI.busy)return;
+  $("dbody").innerHTML="<div class=\"dlgh\"><h2>&#128467;&#65039; Plan the whole month</h2></div><div class=\"dlgb\"><label class=\"f\" for=\"pm-m\">Which month?</label><select id=\"pm-m\">"+ORDER.map(function(m){return "<option value=\""+m+"\""+(m===V.m?" selected":"")+">"+MN[m]+" "+yearOf(m)+"</option>";}).join("")+"</select><p class=\"note\">Fills the school days still ahead in that month. Anything already planned stays.</p><div class=\"btns\"><button class=\"btn\" id=\"pm-go\" type=\"button\">Plan this month</button><button class=\"btn alt\" id=\"pm-x\" type=\"button\">Cancel</button></div></div>";
+  $("pm-x").onclick=function(){$("dlg").close();};
+  $("pm-go").onclick=function(){var m=$("pm-m").value;$("dlg").close();$("gm").value=m;var rs=function(){$("gm").value="auto";};Promise.resolve(__monthPlan()).then(rs,rs);};
+  $("dlg").showModal();};
+$("mo").onclick=function(){monthPlan();};
 // ===== D. The activity editor: month + week mover, auto standards, auto cost, a reliable Ask AI =====
 function wkOptsFor(m,sel){var ws=weeks(m);return ws.map(function(w,i){return "<option value=\""+w+"\""+(w===sel?" selected":"")+">Week "+(i+1)+" • "+fmt(w)+(plan(w).theme?" • "+esc(plan(w).theme):"")+"</option>";}).join("");}
 function monthOf(k){if(weeks(V.m).indexOf(k)>=0)return V.m;for(var i=0;i<12;i++)if(weeks(ORDER[i]).indexOf(k)>=0)return ORDER[i];return V.m;}
@@ -1807,15 +1829,17 @@ function openEd(k,a,isNew){
   h+=lab("ef-p","Steps (one per line)")+"<textarea class=\"auto\" id=\"ef-p\" maxlength=\"1500\">"+esc((x.steps||[]).join("\n"))+"</textarea>";
   h+=lab("ef-i","Age tip (how to adapt it for this age)")+"<textarea class=\"auto\" id=\"ef-i\" rows=\"1\" maxlength=\"300\">"+esc(x.tip)+"</textarea><div class=\"btns\" style=\"margin-top:4px\"><button class=\"btn alt sm\" id=\"ef-tipb\" type=\"button\">&#128161; Suggest an age tip</button></div>";
   h+="<div class=\"row\"><div style=\"flex:1\">"+lab("ef-c","Estimated supply cost")+"<input type=\"text\" id=\"ef-c\" maxlength=\"40\" value=\""+esc(x.cost)+"\"><small class=\"note\" id=\"ef-cn\"></small></div><div style=\"flex:1\">"+lab("ef-a","Class age")+"<select id=\"ef-a\">"+[1,2,3,4,5].map(function(n){return "<option value=\""+n+"\""+(n===x.age?" selected":"")+">"+AGEL[n]+"</option>";}).join("")+"</select></div></div>";
-  h+="<h4 style=\"color:var(--leaf);margin:14px 0 0\">Where it lives</h4>"+lab("ef-mo","Month")+"<select id=\"ef-mo\">"+ORDER.map(function(m){return "<option value=\""+m+"\""+(m===m0?" selected":"")+">"+MN[m]+" "+yearOf(m)+"</option>";}).join("")+"</select>"+lab("ef-w","Week")+"<select id=\"ef-w\">"+wkOptsFor(m0,k)+"</select>"+lab("","Day")+"<div id=\"ef-days\">"+dayHtml()+"</div>"+lab("ef-r","Planner row")+"<select id=\"ef-r\">"+ROWS.map(function(r){return "<option value=\""+esc(r)+"\""+(r===x.slot?" selected":"")+">"+esc(r)+"</option>";}).join("")+"</select>"+lab("","Standards addressed")+"<div id=\"ef-std\">"+tgHtml()+"</div><p class=\"note\" id=\"ef-sn\"></p><div class=\"btns\"><button class=\"btn alt sm\" id=\"ef-retag\" type=\"button\">&#8635; Match standards to my text</button><button class=\"btn alt sm\" id=\"ef-aistd\" type=\"button\">&#10024; Check standards with AI</button><button class=\"btn alt sm\" id=\"ef-stdcfg\" type=\"button\">&#9881;&#65039; Customize standards</button></div>";
+  h+="<h4 style=\"color:var(--leaf);margin:14px 0 0\">Where it lives</h4>"+lab("ef-date","Date")+"<input type=\"date\" id=\"ef-date\" min=\""+isoOf(today0())+"\" value=\""+isoOf(actDate(k,x))+"\"><small class=\"note\" id=\"ef-dn\"></small>"+lab("ef-r","Activity type")+"<select id=\"ef-r\">"+ROWS.map(function(r){return "<option value=\""+esc(r)+"\""+(r===x.slot?" selected":"")+">"+esc(r)+"</option>";}).join("")+"</select>"+lab("","Standards addressed")+"<div id=\"ef-std\">"+tgHtml()+"</div><p class=\"note\" id=\"ef-sn\"></p><div class=\"btns\"><button class=\"btn alt sm\" id=\"ef-retag\" type=\"button\">&#8635; Match standards to my text</button><button class=\"btn alt sm\" id=\"ef-aistd\" type=\"button\">&#10024; Check standards with AI</button><button class=\"btn alt sm\" id=\"ef-stdcfg\" type=\"button\">&#9881;&#65039; Customize standards</button></div>";
   h+="<div id=\"ef-safe\"></div>";h+="<div class=\"aibox\"><strong>✨ Ask the AI</strong><p class=\"note\">Tell the AI what you want for this activity. It rewrites the boxes above, and you decide whether to Save.</p><textarea id=\"ef-ai\" maxlength=\"300\" style=\"min-height:60px\" placeholder=\"Examples: write steps for my idea • make it cheaper • simpler for 2-year-olds • add counting\"></textarea><div class=\"btns\"><button class=\"btn\" id=\"ef-go\" type=\"button\">Ask AI</button><button class=\"btn alt\" id=\"ef-stop\" type=\"button\" hidden>Stop</button></div></div><div id=\"edmsg\" class=\"note\" aria-live=\"polite\"></div>";
   h+="<div class=\"btns\"><button class=\"btn\" id=\"ef-save\" type=\"button\">Save</button><button class=\"btn alt\" id=\"ef-cancel\" type=\"button\">Cancel</button><button class=\"btn alt\" id=\"ef-pr\" type=\"button\">&#128424; Print</button>"+(isNew?"":"<button class=\"btn alt\" id=\"ef-del\" type=\"button\">Delete</button>")+"</div></div>";
   $("dbody").innerHTML=h;efSafeInit();edNotes();
-  $("ef-days").onclick=function(e){var b=e.target.closest("[data-day]");if(!b)return;E.a.day=+b.dataset.day;$("ef-days").innerHTML=dayHtml();};
   $("ef-std").onclick=function(e){var b=e.target.closest("[data-std]");if(!b)return;var s=b.dataset.std,i=E.a.std.indexOf(s);if(i>=0)E.a.std.splice(i,1);else E.a.std.push(s);E.stdLock=true;$("ef-std").innerHTML=tgHtml();edNotes();};
   $("ef-r").onchange=function(){setSlot(E.a,$("ef-r").value);$("ef-std").innerHTML=tgHtml();if(!E.stdLock)edRetag();};
-  $("ef-mo").onchange=function(){var m=+$("ef-mo").value;$("ef-w").innerHTML=wkOptsFor(m,"");E.k=$("ef-w").value;};
-  $("ef-w").onchange=function(){E.k=$("ef-w").value;};
+  E.d0=isoOf(actDate(k,x));
+  $("ef-date").onchange=function(){var v=$("ef-date").value,d=parseDate(v),n=$("ef-dn");if(!d||isNaN(d)){$("ef-date").value=E.d0;return;}
+    var msg="";if(v!==E.d0&&d<today0()){d=today0();msg="That date has passed, so I used today. ";}
+    var d2=nextWeekday(d);if(+d2!==+d){msg+="School runs Monday to Friday, so I moved it to "+DAYS[(d2.getDay()+6)%7]+". ";d=d2;}
+    $("ef-date").value=isoOf(d);n.textContent=msg;E.k=isoOf(mondayOf(d));E.a.day=(d.getDay()+6)%7;E.a.month=d.getMonth();};
   $("ef-c").oninput=function(){E.costAuto=false;edNotes();};
   var live=function(){E.dirty=true;edCollect();if(E.costAuto){var c=costLabel(E.a.materials);if(c)$("ef-c").value=c;}if(!E.stdLock)edRetag(true);};
   ["ef-t","ef-s","ef-m","ef-p"].forEach(function(id){$(id).addEventListener("input",function(){clearTimeout(E.lt);E.lt=setTimeout(live,350);});});
@@ -1894,7 +1918,7 @@ async function edAI(){
     E.costAuto=true;edCollect();var cl=costLabel(E.a.materials)||tcs.cost;if(cl)$("ef-c").value=cl;
     E.dirty=true;if(!E.stdLock)edRetag();autoAll();
     var names={"ef-t":"the name","ef-s":"the description","ef-m":"the materials","ef-p":"the steps","ef-i":"the age tip"},ch=[];
-    Object.keys(names).forEach(function(id){if($(id).value!==before[id]){ch.push(names[id]);$(id).classList.add("flash");setTimeout(function(){$(id).classList.remove("flash");},2500);}});
+    Object.keys(names).forEach(function(id){if($(id).value!==before[id]){ch.push(names[id]);$(id).classList.add("flash");setTimeout(function(){var q=$(id);if(q)q.classList.remove("flash");},2500);}});
     show(ch.length?"✅ Done! The AI changed "+ch.join(", ")+" (highlighted above). Read it over, change anything you like, then press Save."+(eng.note?" "+eng.note:""):"The AI came back with almost the same activity. Try a more specific request, like “make the steps simpler”.");
   }catch(e){show("Couldn’t finish: "+(e&&e.message?e.message:e));}
   finally{AI.tag="";AI.busy=false;var gb=$("ef-go");if(gb)gb.disabled=false;busyUI(false);var sb=$("ef-stop");if(sb){sb.hidden=true;sb.disabled=false;if(sb.dataset.t)sb.textContent=sb.dataset.t;}}}
@@ -1934,14 +1958,14 @@ function pickRowsN(n,use,focus,exclude){exclude=exclude||[];if(n<=0)return [];va
 async function planWeek(){
   if(AI.busy)return;
   if(!(await guardIdea()))return;
-  var age=+$("age").value,only=$("gm").value,k=V.wk,p=plan(k),typed=$("idea").value.trim().slice(0,300),per=3;
-  var days=[],upcoming=0;
-  for(var d=0;d<5;d++){upcoming++;var have=p.acts.filter(function(x){return x.day===d;});if(have.length<per)days.push({d:d,have:have.map(function(x){return x.slot;}),need:per-have.length});}
+  var age=+$("age").value,only=$("gm").value,t0d=today0(),base=nextWeekday(t0d),k=isoOf(mondayOf(base)),p=plan(k),typed=$("idea").value.trim().slice(0,300),per=3;
+  var days=[],upcoming=0,startD=(base.getDay()+6)%7;
+  for(var d=startD;d<5;d++){upcoming++;var have=p.acts.filter(function(x){return x.day===d;});if(have.length<per)days.push({d:d,have:have.map(function(x){return x.slot;}),need:per-have.length});}
   if(!upcoming){say("That week is already over. Pick a current or future week on the calendar first.");return;}
-  if(!days.length){say("Every day this week already has "+per+" or more activities. Remove or move one to plan more.");return;}
+  if(!days.length){say("Every day from today to Friday already has "+per+" or more activities. Remove or move one to plan more.");return;}
   var idea=typed||themeStr(p)||"";
-  if(!idea){say("Type an idea for the week first (like “dinosaurs and counting”), or give this week a theme, and I’ll plan all five days around it.");$("idea").focus();return;}
-  AI.speedNote="";AI.busy=true;AI.stop=false;busyUI(true);
+  if(!idea){say("Type an idea for the week first (like “dinosaurs and counting”), or give this week a theme, and I’ll plan the rest of this week around it.");$("idea").focus();return;}
+  V.wk=k;V.m=base.getMonth();AI.speedNote="";AI.busy=true;AI.stop=false;busyUI(true);
   var made=0,aiMade=0,bankMade=0,failed=0,eng={ok:false,note:""},tAI=0,total=days.reduce(function(s,x){return s+x.need;},0),done=0;
   try{
     var ths=themesOf(p),th=ths.length?{t:ths[0]}:(scoreTheme(idea,only)||fbTheme(only)),use={};
