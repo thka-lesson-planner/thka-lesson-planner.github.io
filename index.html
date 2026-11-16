@@ -119,6 +119,7 @@ body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 
 @media (max-width:820px){.grid2{grid-template-columns:1fr}}
 .sdrow{display:flex;gap:6px;align-items:center;margin:4px 0;flex-wrap:wrap}.sdrow input[type=text]{flex:1;min-width:120px}.sdrow input[type=color]{width:38px;height:34px;padding:1px;flex:none}.flash{outline:3px solid #4FA36B;background:#f2fbf4}
+.datecard{background:linear-gradient(135deg,#fff7e0,#e9f7ee);border:2px dashed var(--leaf);border-radius:16px;padding:10px 12px;margin:4px 0 8px;text-align:center}.datecard .dsay{font-weight:700;font-size:1.05rem;color:var(--leaf);min-height:1.5em}.datecard input[type=date]{width:auto;max-width:100%;margin:6px auto;border-radius:12px;font-size:1rem;text-align:center}.dchips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}.chip{border:2px solid var(--leaf);background:#fff;color:var(--leaf);border-radius:999px;padding:3px 12px;font-weight:700;cursor:pointer;font-size:.85rem}.chip:hover,.chip:focus-visible{background:var(--leaf);color:#fff}@media(prefers-color-scheme:dark){.datecard{background:#1f2e25}.chip{background:#16201a}}
 
 .notice .warnline{margin:8px 0 0;font-weight:600}
 .safebar{margin:10px 0;padding:9px 14px;border-radius:14px;font-size:14px;background:#EEF6FF;border:2px solid #BBD7F2}
@@ -163,7 +164,7 @@ body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
       <p class="note">&#10024; <b>Plan it!</b> and <b>Plan the week</b> imagine brand-new activities from your idea. <b>Plan the whole month</b> fills in instantly from the activity bank, and the wand adds extra imagination whenever you like.</p>
       <div id="msg" aria-live="polite"></div>
     </div><div>
-      <label class="f" for="gdate">Which date?</label><input type="date" id="gdate"><small class="note" id="gdnote"></small>
+      <label class="f" for="gdate">&#128197; Which day is the fun happening?</label><div class="datecard"><div class="dsay" id="gdsay" aria-live="polite"></div><input type="date" id="gdate"><div class="dchips" id="gdchips"><button type="button" class="chip" data-q="today">Today</button><button type="button" class="chip" data-q="tom">Tomorrow</button><button type="button" class="chip" data-q="mon">Next Monday</button></div><small class="note" id="gdnote"></small></div>
       <label class="f" for="gs">Activity type</label><select id="gs"></select>
       <div hidden><select id="gm"></select><select id="gd"></select></div>
       <label class="f" for="bud">Weekly supply budget ($)</label><input type="text" id="bud" inputmode="numeric" maxlength="4" value="45">
@@ -1799,10 +1800,18 @@ function parseDate(s){var a=String(s||"").split("-");return a.length===3?new Dat
 function mondayOf(d){var m=new Date(d.getFullYear(),d.getMonth(),d.getDate());m.setDate(m.getDate()-((m.getDay()+6)%7));return m;}
 function nextWeekday(d){d=new Date(d.getFullYear(),d.getMonth(),d.getDate());while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()+1);return d;}
 function gDate(){var d=parseDate($("gdate").value);if(!d||isNaN(d))return null;if(d<today0())d=today0();return nextWeekday(d);}
-function gdInit(){var g=$("gdate");g.min=isoOf(today0());if(!g.value)g.value=isoOf(nextWeekday(today0()));
-  g.onchange=function(){var d=parseDate(g.value),n=$("gdnote"),msg="";if(!d||isNaN(d)){g.value=isoOf(nextWeekday(today0()));return;}
-    if(d<today0()){d=today0();msg="That date has passed, so I used today. ";}var d2=nextWeekday(d);if(+d2!==+d){msg+="School runs Monday to Friday, so I moved it to "+DAYS[(d2.getDay()+6)%7]+". ";d=d2;}
-    g.value=isoOf(d);n.textContent=msg;};}
+function gdSay(d){var em=["\uD83C\uDF1E","\uD83C\uDF08","\uD83D\uDC1B","\uD83E\uDD8B","\uD83C\uDF89"][(d.getDay()+6)%7%5],n=Math.round((d-today0())/864e5),
+  when=n===0?"that\u2019s today!":n===1?"that\u2019s tomorrow!":n<7?"in "+n+" days":n<14?"next week":"in "+Math.round(n/7)+" weeks";
+  return em+" "+d.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})+" \u2014 "+when;}
+function gdSet(d,msg){var g=$("gdate");g.value=isoOf(d);$("gdnote").textContent=msg||"";$("gdsay").textContent=gdSay(d);}
+function gdInit(){var g=$("gdate"),t=today0();g.min=isoOf(t);
+  var nm=nextWeekday(t);nm.setDate(nm.getDate()+((8-nm.getDay())%7||7));
+  var q=function(k){var d=k==="today"?t:k==="tom"?new Date(t.getFullYear(),t.getMonth(),t.getDate()+1):nm;return d;};
+  Array.prototype.forEach.call($("gdchips").children,function(b){var d=q(b.dataset.q);if(b.dataset.q!=="mon"&&(d.getDay()===0||d.getDay()===6))b.hidden=true;b.onclick=function(){gdSet(d,"");};});
+  g.onchange=function(){var d=parseDate(g.value),msg="";if(!d||isNaN(d)){gdSet(nextWeekday(t),"");return;}
+    if(d<t){d=t;msg="That day has already passed, so I picked today. ";}var d2=nextWeekday(d);if(+d2!==+d){msg+="School runs Monday to Friday, so I hopped to "+DAYS[(d2.getDay()+6)%7]+". ";d=d2;}
+    gdSet(d,msg);};
+  gdSet(g.value&&parseDate(g.value)>=t?nextWeekday(parseDate(g.value)):nextWeekday(t),"");}
 gdInit();
 var __place=place;
 place=function(a,m){var d=gDate();if(!d)return __place(a,m);var mo=d.getMonth();try{fixAy(mo);}catch(e){}
