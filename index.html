@@ -887,15 +887,15 @@ function earlyWhy(s,age){
 async function genAct(idea,slot,theme,age,avoid,others){
   var base="Class age: "+AGEL[age]+". "+AGEG[age]+"\nTeacher's idea: \u201C"+idea+"\u201D\nMonthly theme: "+(theme||"none")+"\nPlanner row: "+slot+" ("+(ROWHINT[slot]||"a classroom activity")+")\n"+
     (avoid&&avoid.length?"Already planned this week (make something clearly different): "+avoid.join("; ")+"\n":"")+"Invent the activity now in exactly the labeled format.";
-  var msgs=[{role:"system",content:SYSG},{role:"user",content:base}],temps=[0.8,0.9];
-  for(var t=0;t<((AI.tps&&AI.tps<6)?1:2)&&!AI.stop&&!AI.deadHit;t++){
+  var msgs=[{role:"system",content:SYSG},{role:"user",content:base}],temps=[0.8,0.9];AI.lastWhy="";
+  for(var t=0;t<((AI.tps&&AI.tps<6)?1:(AI.tps&&AI.tps>=8)?3:2)&&!AI.stop&&!AI.deadHit;t++){
     var t0=Date.now(),retry=t?" (one more try)":"";
-    var txt=await aiGen(msgs,{max:((AI.tps&&AI.tps<6)?140:180),temp:temps[t],abortIf:function(s){return !!earlyWhy(s,age);},onText:function(s){var sec=Math.round((Date.now()-t0)/1000);say((AI.tag||"\u2728 Imagining")+retry+" \u2014 "+magic(sec)+"\u2026 "+sec+"s");}});
+    if(t===2)temps[2]=1.0;var txt=await aiGen(msgs,{max:((AI.tps&&AI.tps<6)?140:180),temp:temps[t]||1.0,abortIf:function(s){return !!earlyWhy(s,age);},onText:function(s){var sec=Math.round((Date.now()-t0)/1000);say((AI.tag||"\u2728 Imagining")+retry+" \u2014 "+magic(sec)+"\u2026 "+sec+"s");}});
     if(AI.timedOut){AI.slowHit=true;return null;}
     if(AI.stop)return null;
     var ew=earlyWhy(txt,age),d=ew?null:parseLab(txt),why=ew?[ew]:(d?draftIssues(d,{idea:idea,age:age,others:others||[],loose:t>=1}):["its answer was not in the right format"]);
     if(!why.length)return d;
-    AI.rejected=(AI.rejected||0)+1;
+    AI.rejected=(AI.rejected||0)+1;AI.lastWhy=why.slice(0,2).join("; ").replace(/^it (is|was) /,"").replace(/\.$/,"").slice(0,140);
     msgs=[msgs[0],{role:"user",content:base+"\nYour last try was rejected because: "+why.join("; ")+". Write a different, safe, specific activity that fixes this."}];}
   return null;}
 function safety(a,age){
@@ -938,7 +938,7 @@ async function draft(){
     var r=place(a,th.m),wm=(r.m!=null?r.m:th.m),where=MN[wm]+" "+yearOf(wm)+" • "+a.theme+", "+DAYS[r.day]+", "+a.slot;
     if(fromAI){$("idea").value="";say("Ta-da! “"+a.title+"” is in "+where+". Click it to see the steps, and review it for safety."+(eng.note?" "+eng.note:"")+(AI.lastSec?" (Took "+AI.lastSec+" seconds.)":""));if(AI.lastSec>40)await speedCheck();}
     else if($("eng").value==="bank")say("Added “"+a.title+"” ("+where+") from the built-in bank. Click it to see the steps.");
-    else say("Added “"+a.title+"” ("+where+") from the built-in bank, because "+(eng.ok?"the AI couldn’t make a safe, creative version this time. Press Plan it! again to retry":whyNot(eng,"the AI helper isn’t ready yet"))+". You can edit it and use Ask AI.");
+    else say("Added “"+a.title+"” ("+where+") from the built-in bank, because "+(eng.ok?"the AI couldn’t make a safe, creative version this time"+(AI.lastWhy?" (its tries were rejected because "+AI.lastWhy+")":"")+". Press Plan it! again to retry":whyNot(eng,"the AI helper isn’t ready yet"))+". You can edit it and use Ask AI.");
   }catch(e){say("Couldn’t finish: "+(e&&e.message?e.message:e));}
   finally{AI.tag="";AI.busy=false;busyUI(false);}}
 // ---------- Plan the week (one imagined activity per open day, all from the teacher's words) ----------
@@ -1704,6 +1704,7 @@ var SYSG0=SYSG,SYS20=SYS2;
 function buildSYSG(){var ks=Object.keys(STD),desc=ks.map(function(k){return k+" "+STD[k][0];}).join(", ");
   SYSG=SYSG0.replace(/STANDARDS: two or three codes from [^\n]*\n\([^\n]*\)\n/,"STANDARDS: two or three codes from "+ks.join(", ")+"\n("+desc+". Pick what the activity really teaches.)\n");
   SYSG=SYSG.replace("Rules: match the child's age;","Rules: stay on the teacher's idea; every material must be used in a step; gentle, cheerful and on-topic only, never bones, blood, death, weapons or anything scary or gross; match the child's age;");
+  SYSG+="\nSports and games (lacrosse, soccer, hockey, football, baseball, karate and so on): make a gentle preschool version. Use foam or plastic scoops, soft balls, cones, buckets and targets, take turns, and skip tackling, hitting, checking, real sticks or bats, and any contact between children.";
   SYS2=SYS20+"\nStay on the activity's own subject and planner row: do not add counting or math to a literacy activity, or reading to a math one. Every material must be used in a step. Never add anything scary, gross or violent.";}
 buildSYSG();
 var SDW=null;
