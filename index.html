@@ -887,7 +887,7 @@ function earlyWhy(s,age){
 async function genAct(idea,slot,theme,age,avoid,others){
   var base="Class age: "+AGEL[age]+". "+AGEG[age]+"\nTeacher's idea: \u201C"+idea+"\u201D\nMonthly theme: "+(theme||"none")+"\nPlanner row: "+slot+" ("+(ROWHINT[slot]||"a classroom activity")+")\n"+
     (avoid&&avoid.length?"Already planned this week (make something clearly different): "+avoid.join("; ")+"\n":"")+"Invent the activity now in exactly the labeled format.";
-  var msgs=[{role:"system",content:SYSG},{role:"user",content:base}],temps=[0.8,0.9];AI.lastWhy="";
+  var msgs=[{role:"system",content:SYSG},{role:"user",content:base}],temps=[0.8,0.9];AI.lastWhy="";AI.unsafeHit=false;
   for(var t=0;t<((AI.tps&&AI.tps<6)?1:(AI.tps&&AI.tps>=8)?3:2)&&!AI.stop&&!AI.deadHit;t++){
     var t0=Date.now(),retry=t?" (one more try)":"";
     if(t===2)temps[2]=1.0;var txt=await aiGen(msgs,{max:((AI.tps&&AI.tps<6)?140:180),temp:temps[t]||1.0,abortIf:function(s){return !!earlyWhy(s,age);},onText:function(s){var sec=Math.round((Date.now()-t0)/1000);say((AI.tag||"\u2728 Imagining")+retry+" \u2014 "+magic(sec)+"\u2026 "+sec+"s");}});
@@ -895,6 +895,7 @@ async function genAct(idea,slot,theme,age,avoid,others){
     if(AI.stop)return null;
     var ew=earlyWhy(txt,age),d=ew?null:parseLab(txt),why=ew?[ew]:(d?draftIssues(d,{idea:idea,age:age,others:others||[],loose:t>=1}):["its answer was not in the right format"]);
     if(!why.length)return d;
+    if(why.some(function(w){return /unsafe/i.test(w);})){AI.rejected=(AI.rejected||0)+1;AI.unsafeHit=true;AI.lastWhy=why.filter(function(w){return /unsafe/i.test(w);})[0].replace(/^it (is|was) /,"").replace(/\.$/,"").slice(0,140);return null;}
     AI.rejected=(AI.rejected||0)+1;AI.lastWhy=why.slice(0,2).join("; ").replace(/^it (is|was) /,"").replace(/\.$/,"").slice(0,140);
     msgs=[msgs[0],{role:"user",content:base+"\nYour last try was rejected because: "+why.join("; ")+". Write a different, safe, specific activity that fixes this."}];}
   return null;}
@@ -920,6 +921,7 @@ async function draft(){
   if(AI.busy)return;
   var text=$("idea").value.trim();if(!text){say("Type what the kids are doing first \u{1F642}");$("idea").focus();return;}
   if(!(await guardIdea()))return;text=$("idea").value.trim();
+  if(ideaStop(text,+$("age").value))return;
   var age=+$("age").value,only=$("gm").value,slotSel=$("gs").value;
   AI.busy=true;AI.stop=false;busyUI(true);
   try{
@@ -938,7 +940,7 @@ async function draft(){
     var r=place(a,th.m),wm=(r.m!=null?r.m:th.m),where=MN[wm]+" "+yearOf(wm)+" • "+a.theme+", "+DAYS[r.day]+", "+a.slot;
     if(fromAI){$("idea").value="";say("Ta-da! “"+a.title+"” is in "+where+". Click it to see the steps, and review it for safety."+(eng.note?" "+eng.note:"")+(AI.lastSec?" (Took "+AI.lastSec+" seconds.)":""));if(AI.lastSec>40)await speedCheck();}
     else if($("eng").value==="bank")say("Added “"+a.title+"” ("+where+") from the built-in bank. Click it to see the steps.");
-    else say("Added “"+a.title+"” ("+where+") from the built-in bank, because "+(eng.ok?"the AI couldn’t make a safe, creative version this time"+(AI.lastWhy?" (its tries were rejected because "+AI.lastWhy+")":"")+". Press Plan it! again to retry":whyNot(eng,"the AI helper isn’t ready yet"))+". You can edit it and use Ask AI.");
+    else say("Added “"+a.title+"” ("+where+") from the built-in bank, because "+(eng.ok?"the AI couldn’t make a safe, creative version this time"+(AI.lastWhy?" (its tries were rejected because "+AI.lastWhy+")":"")+"."+(AI.unsafeHit?" Try describing it a little differently.":" Press Plan it! again to retry"):whyNot(eng,"the AI helper isn’t ready yet"))+". You can edit it and use Ask AI.");
   }catch(e){say("Couldn’t finish: "+(e&&e.message?e.message:e));}
   finally{AI.tag="";AI.busy=false;busyUI(false);}}
 // ---------- Plan the week (one imagined activity per open day, all from the teacher's words) ----------
@@ -1968,6 +1970,7 @@ function pickRowsN(n,use,focus,exclude){exclude=exclude||[];if(n<=0)return [];va
 async function planWeek(){
   if(AI.busy)return;
   if(!(await guardIdea()))return;
+  if(ideaStop($("idea").value.trim(),+$("age").value))return;
   var age=+$("age").value,only=$("gm").value,t0d=today0(),base=nextWeekday(t0d),k=isoOf(mondayOf(base)),p=plan(k),typed=$("idea").value.trim().slice(0,300),per=3;
   var days=[],upcoming=0,startD=(base.getDay()+6)%7;
   for(var d=startD;d<5;d++){upcoming++;var have=p.acts.filter(function(x){return x.day===d;});if(have.length<per)days.push({d:d,have:have.map(function(x){return x.slot;}),need:per-have.length});}
@@ -2019,6 +2022,14 @@ $("idea").addEventListener("input",function(){primeSoon(900);});
 $("age").addEventListener("change",function(){primeSoon(300);});
 var __primeCache=primeCache;
 primeCache=function(){AI.primedKey="";__primeCache();primeSoon(1200);};
+
+// ===== J. Check the teacher's idea BEFORE any waiting: stop at once if it is unsafe for preschoolers =====
+function ideaStop(text,age){
+  if(!text)return false;
+  var fl=[];try{fl=scanText({title:text,summary:text,materials:[],steps:[text],tip:"",age:age||3}).filter(function(f){return f.lvl==="danger";});}catch(e){}
+  if(!fl.length)return false;
+  say("I didn\u2019t start this one, so you don\u2019t have to wait: \u201C"+text.slice(0,60)+"\u201D sounds unsafe for preschoolers. "+(fl[0].msg||"")+" Try describing a gentle version, like soft balls and targets with no contact, and press the button again.");
+  try{$("idea").focus();}catch(e){}return true;}
 
 $("skipai").onclick=skipAI;
 (function init(){
