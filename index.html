@@ -885,7 +885,7 @@ function earlyWhy(s,age){
   var f=scanText({title:"",summary:String(s).replace(/\n/g,". "),materials:[],steps:[],tip:"",age:age}).filter(function(x){return x.lvl==="danger";});
   return f.length?"it is unsafe: "+f[0].msg:"";}
 async function genAct(idea,slot,theme,age,avoid,others){
-  var base="Teacher's idea: \u201C"+idea+"\u201D\nClass age: "+AGEL[age]+". "+AGEG[age]+"\nMonthly theme: "+(theme||"none")+"\nPlanner row: "+slot+" ("+(ROWHINT[slot]||"a classroom activity")+")\n"+
+  var base="Class age: "+AGEL[age]+". "+AGEG[age]+"\nTeacher's idea: \u201C"+idea+"\u201D\nMonthly theme: "+(theme||"none")+"\nPlanner row: "+slot+" ("+(ROWHINT[slot]||"a classroom activity")+")\n"+
     (avoid&&avoid.length?"Already planned this week (make something clearly different): "+avoid.join("; ")+"\n":"")+"Invent the activity now in exactly the labeled format.";
   var msgs=[{role:"system",content:SYSG},{role:"user",content:base}],temps=[0.8,0.9];
   for(var t=0;t<((AI.tps&&AI.tps<6)?1:2)&&!AI.stop&&!AI.deadHit;t++){
@@ -2005,6 +2005,19 @@ renderPlan=function(){__rPlan();var p=plan(V.wk),tot=0,n=0,miss=0;p.acts.forEach
   var bud=budget(),over=tot>bud;
   $("view").insertAdjacentHTML("beforeend","<p class=\"note noprint\" id=\"wk-cost\">"+(p.acts.length?"Estimated supplies this week: <b>about $"+Math.round(tot)+"</b> of your $"+Math.round(bud)+" budget"+(over?" ⚠️ over budget":"")+(miss?" ("+miss+" activit"+(miss===1?"y has":"ies have")+" no price yet; open it and press Save)":"")+".":"")+" <button class=\"btn alt sm\" id=\"std-cfg2\" type=\"button\">&#9881;&#65039; Customize standards</button></p>");
   $("std-cfg2").onclick=stdOpen;};
+
+// ===== I. Pre-read the start of the prompt (class age + the teacher's idea) while the teacher is still choosing / typing =====
+// The AI reuses its "already read" memory for any prompt that starts exactly the same way, so only the last few lines need reading after the button is pressed.
+function primeIdea(){
+  if(AI.busy||AI.active!=="cpu"||!AI.cpu||typeof SYSG==="undefined")return;
+  var age=+$("age").value,idea=$("idea").value.trim(),pre="<|im_start|>system\n"+SYSG+"<|im_end|>\n<|im_start|>user\nClass age: "+AGEL[age]+". "+AGEG[age]+"\n"+(idea.length>=4?"Teacher's idea: \u201C"+idea+"\u201D\n":"");
+  if(AI.primedKey===pre)return;AI.primedKey=pre;AI.primeLen=pre.length;
+  try{AI.pending=AI.cpu.createCompletion(pre,{nPredict:1,useCache:true,sampling:{temp:0}}).then(function(){},function(){});}catch(e){}}
+var PRT=null;function primeSoon(ms){clearTimeout(PRT);PRT=setTimeout(primeIdea,ms||900);}
+$("idea").addEventListener("input",function(){primeSoon(900);});
+$("age").addEventListener("change",function(){primeSoon(300);});
+var __primeCache=primeCache;
+primeCache=function(){AI.primedKey="";__primeCache();primeSoon(1200);};
 
 $("skipai").onclick=skipAI;
 (function init(){
