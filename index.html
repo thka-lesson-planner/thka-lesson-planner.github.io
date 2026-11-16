@@ -158,7 +158,7 @@ body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
       <label class="f" for="age">Class age: <span class="agepill" id="agel"></span></label>
       <input type="range" id="age" min="1" max="5" step="1" value="3">
       <div class="ticks" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
-      <div class="btns"><button class="btn big" id="go" type="button">Plan it!</button><button class="btn alt" id="pw" type="button">&#128197; Plan the week</button><select id="perday" aria-label="Activities per day" title="Activities per day" style="width:auto"><option value="1">1 a day</option><option value="2">2 a day</option><option value="3" selected>3 a day</option><option value="4">4 a day</option><option value="5">5 a day</option></select><button class="btn alt" id="mo" type="button">&#128467;&#65039; Plan the whole month</button><button class="btn alt" id="mh" type="button">&#9999;&#65039; Add by hand</button><button class="btn alt" id="pm" type="button">✨ Make this week more imaginative</button><button class="btn alt" id="skipai" type="button" hidden>⚡ Too slow? Use a quick idea</button><button class="btn alt" id="stop" type="button" hidden>Stop</button></div>
+      <div class="btns"><button class="btn big" id="go" type="button">Plan it!</button><button class="btn alt" id="pw" type="button">&#128197; Plan the week</button><button class="btn alt" id="mo" type="button">&#128467;&#65039; Plan the whole month</button><button class="btn alt" id="mh" type="button">&#9999;&#65039; Add by hand</button><button class="btn alt" id="pm" type="button">✨ Make this week more imaginative</button><button class="btn alt" id="skipai" type="button" hidden>⚡ Too slow? Use a quick idea</button><button class="btn alt" id="stop" type="button" hidden>Stop</button></div>
       <p class="note inl" id="polrow"><label for="pol">Wand works on: </label><select id="pol" style="width:auto"><option value="wk">This week</option><option value="next">Next week</option><option value="month">The whole month (takes a while)</option></select></p>
       <p class="note">&#10024; <b>Plan it!</b> and <b>Plan the week</b> imagine brand-new activities from your idea. <b>Plan the whole month</b> fills in instantly from the activity bank, and the wand adds extra imagination whenever you like.</p>
       <div id="msg" aria-live="polite"></div>
@@ -1934,13 +1934,13 @@ function pickRowsN(n,use,focus,exclude){exclude=exclude||[];if(n<=0)return [];va
 async function planWeek(){
   if(AI.busy)return;
   if(!(await guardIdea()))return;
-  var age=+$("age").value,only=$("gm").value,k=V.wk,p=plan(k),typed=$("idea").value.trim().slice(0,300),per=Math.max(1,Math.min(8,+($("perday")?$("perday").value:3)||3));
+  var age=+$("age").value,only=$("gm").value,k=V.wk,p=plan(k),typed=$("idea").value.trim().slice(0,300),per=3;
   var days=[],upcoming=0;
-  for(var d=0;d<5;d++){var dt=pd(k);dt.setDate(dt.getDate()+d);if(dt>=today0()){upcoming++;var have=p.acts.filter(function(x){return x.day===d;});if(have.length<per)days.push({d:d,have:have.map(function(x){return x.slot;}),need:per-have.length});}}
+  for(var d=0;d<5;d++){upcoming++;var have=p.acts.filter(function(x){return x.day===d;});if(have.length<per)days.push({d:d,have:have.map(function(x){return x.slot;}),need:per-have.length});}
   if(!upcoming){say("That week is already over. Pick a current or future week on the calendar first.");return;}
-  if(!days.length){say("Every upcoming day this week already has "+per+" or more activities. Raise the “per day” number, or move or remove one.");return;}
+  if(!days.length){say("Every day this week already has "+per+" or more activities. Remove or move one to plan more.");return;}
   var idea=typed||themeStr(p)||"";
-  if(!idea){say("Type an idea for the week first (like “dinosaurs and counting”), or give this week a theme, and I’ll build every day around it.");$("idea").focus();return;}
+  if(!idea){say("Type an idea for the week first (like “dinosaurs and counting”), or give this week a theme, and I’ll plan all five days around it.");$("idea").focus();return;}
   AI.speedNote="";AI.busy=true;AI.stop=false;busyUI(true);
   var made=0,aiMade=0,bankMade=0,failed=0,eng={ok:false,note:""},tAI=0,total=days.reduce(function(s,x){return s+x.need;},0),done=0;
   try{
