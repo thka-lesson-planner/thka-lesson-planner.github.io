@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src data:; connect-src https://*.workers.dev; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; img-src data:; connect-src https://*.workers.dev https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; worker-src 'self' blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Lesson Planning Helper | Treehouse Kids Academy</title>
 <script src="coi-serviceworker.js"></script>
@@ -16,7 +16,7 @@
   <div><h1>Treehouse Kids Academy</h1><p>Lesson Planning Helper &mdash; tell us what the kids are doing, and we&rsquo;ll plan it!</p></div>
 </div><div class="wrap"><nav class="nav" aria-label="Pages"><button class="navb on" data-pg="plan" type="button">&#127795; Lesson Planner</button><button class="navb" data-pg="sign" type="button">&#129311; Sign Language</button></nav></div></header>
 <main class="wrap">
-  <div class="notice noprint">&#128274; Your planners stay on this device. When you use the AI, your idea and the activity text are sent to Claude, an AI from Anthropic, to write the activity. Please don&rsquo;t type children&rsquo;s names or any personal details. Always review AI ideas for safety and allergies before using them in class.
+  <div class="notice noprint">&#128274; Your planners stay on this device. The on-device AI never sends anything; if you choose Claude AI, your idea and the activity text are sent to Anthropic to write the activity. Please don&rsquo;t type children&rsquo;s names or any personal details. Always review AI ideas for safety and allergies before using them in class.
     <p class="warnline">&#9888;&#65039; <b>Your planners are saved only in this browser.</b> Clearing your browser data, cookies, or cache will erase them. Please <b>export (save) your planners</b> before you clear or delete anything.</p>
     <div class="btns" style="margin-top:6px"><button class="btn sm" id="bk-ex" type="button">&#11015;&#65039; Export my planners</button><button class="btn alt sm" id="bk-im" type="button">&#11014;&#65039; Import a backup</button><input type="file" id="bk-file" accept="application/json,.json" hidden><span class="note" id="bk-note"></span></div></div>
   <div id="pg-plan">
@@ -39,10 +39,15 @@
       <div hidden><select id="gm"></select><select id="gd"></select></div>
       <label class="f" for="bud">Weekly supply budget ($)</label><input type="text" id="bud" inputmode="numeric" maxlength="4" value="45">
       <label class="f">AI helper <span class="st" id="st"></span></label>
+      <div class="btns" style="margin-top:6px"><button class="btn alt" id="setup" type="button" hidden>Set up AI helper</button></div>
+      <progress id="prog" max="100" value="0" hidden></progress>
+      <p class="note" id="dlnote" aria-live="polite"></p>
       <p class="note" id="wnote"></p>
       <details class="note" id="adv"><summary>Advanced &amp; technical details</summary>
         <label class="f" for="eng">How the AI runs</label>
-        <select id="eng"><option value="claude">Claude AI: writes new activities over the internet (recommended)</option><option value="bank">No AI: built-in activity bank only (nothing is sent anywhere)</option></select>
+        <select id="eng"><option value="claude">Claude AI: writes activities over the internet (Anthropic)</option><option value="cpu">Reliable mode: runs on this device (recommended)</option><option value="gpu">Fast mode: uses the graphics card (strong computers only)</option><option value="bank">No AI: built-in activity bank only</option></select>
+        <p class="note inl" id="cmrow"><label for="cm">AI size: </label><select id="cm" style="width:auto"><option value="auto">Automatic (best for this device)</option><option value="light">Light (about 0.5 GB, quickest)</option><option value="balanced">Balanced (about 1.1 GB, more creative)</option><option value="heavy">Powerful (about 2.5 GB, most creative, strong computers with 8 GB+ memory only)</option></select></p>
+        <p class="note"><label><input type="checkbox" id="auto" style="width:auto;margin-right:6px">Load the AI helper automatically when this page opens</label></p>
         <div id="tech"></div>
       </details>
     </div></div>
@@ -65,7 +70,7 @@
     <div class="btns noprint"><button class="btn alt" id="pr" type="button">&#128424; Print week</button><button class="btn alt" id="pmo" type="button">&#128424; Print month</button><button class="btn alt" id="clr" type="button">Clear this week</button></div>
   </section>
   </div><section id="pg-sign" hidden></section>
-  <footer>No tracking, no accounts. Plans are saved in this browser only. The AI helper is Claude by Anthropic: when you use it, your idea and the activity text are sent through this site&rsquo;s relay to Anthropic to write the answer. Choose &ldquo;No AI&rdquo; under Advanced to keep everything on this device.<br>Standard names below are the learning areas of the Idaho Early Learning eGuidelines; confirm wording against the current Idaho STARS documents.<p class="copyright" style="margin:10px 0 0;font-weight:700;color:var(--ink)">&copy; 2026 Joaquin Ruby and Athena Gilbertson. All rights reserved. Treehouse Kids Academy Lesson Planning Helper.</p></footer>
+  <footer>No tracking, no accounts. If you set up the AI helper, its engine and model are downloaded once from public hosts (jsDelivr and Hugging Face) and saved on this device; that AI never uploads your text. If you choose Claude AI, your idea and the activity text are sent through this site&rsquo;s relay to Anthropic (Claude) to write the answer. AI helper credits: Qwen2.5 models (Apache 2.0, Alibaba Cloud), wllama (MIT), WebLLM (Apache 2.0). Plans are saved in this browser only.<br>Standard names below are the learning areas of the Idaho Early Learning eGuidelines; confirm wording against the current Idaho STARS documents.<p class="copyright" style="margin:10px 0 0;font-weight:700;color:var(--ink)">&copy; 2026 Joaquin Ruby and Athena Gilbertson. All rights reserved. Treehouse Kids Academy Lesson Planning Helper.</p></footer>
 </main>
 <dialog id="guard"><div id="gbody"></div></dialog>
 <dialog id="dlg"><div id="dbody"></div></dialog>

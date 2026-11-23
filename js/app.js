@@ -9,12 +9,25 @@ function stopAI(){
   if(!AI.busy)return;
   AI.stop=true;
   if(AI.cur){AI.cur.c=true;try{if(AI.cur.fire)AI.cur.fire();}catch(e){}}
+  try{if(AI.web&&AI.web.interruptGenerate)AI.web.interruptGenerate();}catch(e){}
   var w=AI.waiters;AI.waiters=[];w.forEach(function(f){try{f();}catch(e){}});
   ["stop","ef-stop","sg-stop","sl-stop"].forEach(function(id){var b=$(id);if(b&&!b.hidden){b.disabled=true;if(b.dataset.t===undefined)b.dataset.t=b.textContent;b.textContent="\u23F9\uFE0F Stopping\u2026";}});
   say("\u23F9\uFE0F Stopping\u2026 one moment.");}
 $("stop").onclick=stopAI;
-$("eng").onchange=function(){say("");refresh();};
+$("eng").onchange=function(){write("tka:engpick",$("eng").value);say("");refresh();};
 $("pol").onchange=function(){write("tka:pol",$("pol").value);refresh();};
+$("cm").onchange=function(){write("tka:cm",$("cm").value);write("tka:cap","");refresh();};
+$("auto").onchange=function(){write("tka:auto",$("auto").checked);};
+// Quietly load the AI helper in the background a moment after the page opens, so it is ready when the teacher is.
+function autoLoad(){
+  if(!$("auto").checked||$("eng").value==="bank"||AI.busy||AI.loading||engReady())return;
+  try{var c=navigator.connection;if(c&&c.saveData&&!engCached())return;}catch(x){}
+  ensureAI().then(function(r){if(!r.ok&&r.note)$("dlnote").textContent=r.note;else if(r.note)$("dlnote").textContent=r.note;});}
+$("setup").onclick=async function(){
+  if(AI.busy||AI.loading)return;var b=$("setup");b.disabled=true;
+  say("Setting up the AI helper…");
+  var r=await ensureAI();b.disabled=false;
+  say(r.ok?"The AI helper is ready! Plan it!, Plan the week, Ask AI, and the sign suggestions can use it now."+(r.note?" "+r.note:""):(r.note||"The AI helper couldn’t start."));};
 // ---------- Teacher-feedback fixes (Nov 2026): custom standards, moving activities, costs, age tips, AI limits ----------
 // ===== A. Customizable standards (names, colors, keywords, and which standard each planner row counts toward) =====
 var STD_DEF=JSON.parse(JSON.stringify(STD)),ROWSTD_DEF=JSON.parse(JSON.stringify(ROWSTD));
@@ -237,8 +250,8 @@ async function edAI(){
   if(AI.busy){show("The AI is finishing another job. Yours will start the moment it is done…");var w0=Date.now();while(AI.busy&&Date.now()-w0<120000)await sleep(400);
     if(AI.busy){show("The AI is still busy. Wait for it to finish, or press Stop on the page behind this window, then try again.");return;}}
   edCollect();var x=E.a,age=x.age||+$("age").value,cmd=$("ef-ai").value.trim();
-  if($("eng").value==="bank"){show("AI help is switched off. Choose Claude AI under Advanced & technical details in the Make an activity box.");return;}
-  if(!engReady()&&!engCached()){show("The Claude AI isn\u2019t connected to this site yet, so AI help isn\u2019t available.");return;}
+  if($("eng").value==="bank"){show("AI help is switched off. Choose Reliable mode in the Make an activity box.");return;}
+  if(!engReady()&&!engCached()){show("Set up the AI helper first (the button is in the Make an activity box on the page behind this window).");return;}
   if(!cmd)cmd=(x.summary&&x.steps.length)?"Polish this activity and keep my ideas.":"Fill in whatever is missing and make it fun.";
   var gg=await guardCheck(cmd);cmd=gg.text;$("ef-ai").value=cmd;if(!gg.ok){show("");return;}
   AI.busy=true;AI.stop=false;busyUI(true);$("ef-go").disabled=true;$("go").disabled=$("mo").disabled=true;$("ef-stop").hidden=false;show("✨ Starting… the AI is reading your activity.");
@@ -251,7 +264,7 @@ async function edAI(){
     var cur={title:x.title,summary:x.summary,materials:x.materials,steps:x.steps,tip:x.tip,cost:x.cost,std:x.std,slot:x.slot,theme:plan(E.k).theme||x.theme||""};
     var d=await rewriteAct(cur,"The teacher's command: "+cmd+". Keep what the teacher wrote unless the command changes it.",age);
     if(AI.stop){show("⏹️ Cancelled. Nothing was changed.");return;}
-    if(!d){show(AI.timedOut?"The AI took too long to answer, so I stopped. Nothing was changed. Please try again in a moment.":"The AI’s answer couldn’t be read. Nothing was changed. Try rephrasing your request.");return;}
+    if(!d){show(AI.timedOut?"That took longer than a couple of minutes on this computer, so I stopped. Nothing was changed. Try a shorter request, or choose the Light AI size under Advanced.":"The AI’s answer couldn’t be read. Nothing was changed. Try rephrasing your request.");return;}
     var unsafe=scanText({title:d.title,summary:d.summary,materials:d.materials,steps:d.steps,tip:d.ageTip,age:age}).filter(function(f){return f.lvl==="danger";});
     if(unsafe.length&&!/safety|safe/i.test(cmd)){show("The AI’s rewrite had a safety problem ("+unsafe[0].msg+"), so your version was kept. Try rephrasing.");return;}
     var odd=oddWords([d.title,d.summary].concat(d.materials||[],d.steps||[]).join(" "),cmd+" "+x.title+" "+x.summary);
@@ -282,17 +295,17 @@ draftIssues=function(d,ctx){ctx=ctx||{};if(d&&d.materials)pruneMaterials(d);var 
   return why.slice(0,4);};
 // ===== F. Never wait forever: time limits, "quick idea" button, and a busy flag that tells the teacher =====
 var __say=say;
-function aiMaxSec(){return 90;}
+function aiMaxSec(){if(AI.active==="claude")return 90;var t=AI.tps||0;return t&&t<6?75:100;}
 var __aiGen=aiGen;
 aiGen=async function(msgs,o){o=o||{};AI.timedOut=false;
   if(AI.deadline&&Date.now()>AI.deadline){AI.timedOut=true;AI.deadHit=true;return "";}
-  var timer=setTimeout(function(){AI.timedOut=true;if(AI.cur){AI.cur.c=true;try{if(AI.cur.fire)AI.cur.fire();}catch(e){}}},(o.maxSec||aiMaxSec())*1000);
+  var timer=setTimeout(function(){AI.timedOut=true;if(AI.cur){AI.cur.c=true;try{if(AI.cur.fire)AI.cur.fire();}catch(e){}}try{if(AI.web&&AI.web.interruptGenerate)AI.web.interruptGenerate();}catch(e){}},(o.maxSec||aiMaxSec())*1000);
   try{return await __aiGen(msgs,o);}finally{clearTimeout(timer);}};
 var __busyUI=busyUI;
 busyUI=function(b){__busyUI(b);var s=$("skipai");clearTimeout(AI.skT);
-  if(b){AI.deadline=Date.now()+270000;AI.deadHit=false;AI.slowHit=false;AI.skip=false;if(s&&$("eng").value!=="bank"){s.hidden=true;AI.skT=setTimeout(function(){if(AI.busy)s.hidden=false;},25000);}}
+  if(b){AI.deadline=Date.now()+270000;AI.deadHit=false;AI.slowHit=false;AI.skip=false;if(s&&$("eng").value!=="bank"){s.hidden=true;AI.skT=setTimeout(function(){if(AI.busy)s.hidden=false;},(AI.active!=="claude"&&AI.tps&&AI.tps<6)?8000:25000);}}
   else if(s)s.hidden=true;};
-function skipAI(){if(!AI.busy)return;AI.skip=true;AI.stop=true;if(AI.cur){AI.cur.c=true;try{if(AI.cur.fire)AI.cur.fire();}catch(e){}}
+function skipAI(){if(!AI.busy)return;AI.skip=true;AI.stop=true;if(AI.cur){AI.cur.c=true;try{if(AI.cur.fire)AI.cur.fire();}catch(e){}}try{if(AI.web&&AI.web.interruptGenerate)AI.web.interruptGenerate();}catch(e){}
   var w=AI.waiters;AI.waiters=[];w.forEach(function(f){try{f();}catch(e){}});__say("⚡ Switching to a quick built-in idea…");}
 
 // ===== G. Plan the week: several activities per day (the AI imagines one per day, the bank fills the rest instantly) =====
@@ -326,11 +339,11 @@ async function planWeek(){
           if(AI.stop&&AI.skip){AI.stop=false;AI.skip=false;eng={ok:false,note:"you chose quick ideas"};}
           if(g){a=makeAct(g,idea,age,only,rows[j],dth);aiMade++;}else if(!AI.stop)failed++;}
         if(!a&&!AI.stop){var bd=bankAct(dth,rows[j],age,idea,bavoid);a=toAct(bd,idea,age,only,rows[j]);a.theme=dth;a.bk=true;bankMade++;}
-        if(a){a.month=dt2.getMonth();a.day=dd;p.acts.push(a);avoid.push(a.title);made++;save();V.view="plan";render();}}}
+        if(a){a.month=dt2.getMonth();a.day=dd;p.acts.push(a);avoid.push(a.title);made++;save();V.view="plan";render();if(aiMade===1&&j===0&&i<days.length-1&&!a.bk)await speedCheck();}}}
     if(typed&&made)$("idea").value="";
     var wk="the week of "+fmtD(k,0);
     if(AI.stop)noteCancel("Cancelled. "+(made?made+" activit"+(made===1?"y was":"ies were")+" already added to "+wk+" and kept.":"Nothing was added to "+wk+"."));
-    else say("Ta-da! "+made+" activit"+(made===1?"y":"ies")+" planned for "+wk+", around “"+idea.slice(0,60)+"”: "+aiMade+" imagined by the AI"+(bankMade?" and "+bankMade+" quick starter ideas from the built-in bank (press the ✨ wand to upgrade them)":"")+"."+(AI.slowHit?" The AI was slow to answer, so the rest used quick ideas.":AI.deadHit?" I stopped the AI after about 4 minutes so you never wait too long; the rest used quick ideas.":"")+(eng.ok||!bankMade?"":" "+whyNot(eng,""))+" Review everything for safety and cost."+(AI.speedNote?" "+AI.speedNote:""));
+    else say("Ta-da! "+made+" activit"+(made===1?"y":"ies")+" planned for "+wk+", around “"+idea.slice(0,60)+"”: "+aiMade+" imagined by the AI"+(bankMade?" and "+bankMade+" quick starter ideas from the built-in bank (press the ✨ wand to upgrade them)":"")+"."+(AI.slowHit?" This computer was slow, so the rest used quick ideas.":AI.deadHit?" I stopped the AI after about 4 minutes so you never wait too long; the rest used quick ideas.":"")+(eng.ok||!bankMade?"":" "+whyNot(eng,""))+" Review everything for safety and cost."+(AI.speedNote?" "+AI.speedNote:""));
   }catch(e){say("Added "+made+" activities, then stopped: "+(e&&e.message?e.message:e));}
   finally{AI.tag="";AI.busy=false;busyUI(false);save();render();}}
 
@@ -340,6 +353,19 @@ renderPlan=function(){__rPlan();var p=plan(V.wk),tot=0,n=0,miss=0;p.acts.forEach
   var bud=budget(),over=tot>bud;
   $("view").insertAdjacentHTML("beforeend","<p class=\"note noprint\" id=\"wk-cost\">"+(p.acts.length?"Estimated supplies this week: <b>about $"+Math.round(tot)+"</b> of your $"+Math.round(bud)+" budget"+(over?" ⚠️ over budget":"")+(miss?" ("+miss+" activit"+(miss===1?"y has":"ies have")+" no price yet; open it and press Save)":"")+".":"")+" <button class=\"btn alt sm\" id=\"std-cfg2\" type=\"button\">&#9881;&#65039; Customize standards</button></p>");
   $("std-cfg2").onclick=stdOpen;};
+
+// ===== I. Pre-read the start of the prompt (class age + the teacher's idea) while the teacher is still choosing / typing =====
+// The AI reuses its "already read" memory for any prompt that starts exactly the same way, so only the last few lines need reading after the button is pressed.
+function primeIdea(){
+  if(AI.busy||AI.active!=="cpu"||!AI.cpu||typeof SYSG==="undefined")return;
+  var age=+$("age").value,idea=$("idea").value.trim(),pre="<|im_start|>system\n"+SYSG+"<|im_end|>\n<|im_start|>user\nClass age: "+AGEL[age]+". "+AGEG[age]+"\n"+(idea.length>=4?"Teacher's idea: \u201C"+idea+"\u201D\n":"");
+  if(AI.primedKey===pre)return;AI.primedKey=pre;AI.primeLen=pre.length;
+  try{AI.pending=AI.cpu.createCompletion(pre,{nPredict:1,useCache:true,sampling:{temp:0}}).then(function(){},function(){});}catch(e){}}
+var PRT=null;function primeSoon(ms){clearTimeout(PRT);PRT=setTimeout(primeIdea,ms||900);}
+$("idea").addEventListener("input",function(){primeSoon(900);});
+$("age").addEventListener("change",function(){primeSoon(300);});
+var __primeCache=primeCache;
+primeCache=function(){AI.primedKey="";__primeCache();primeSoon(1200);};
 
 // ===== J. Check the teacher's idea BEFORE any waiting: stop at once if it is unsafe for preschoolers =====
 function ideaStop(text,age){
@@ -351,8 +377,14 @@ function ideaStop(text,age){
 
 $("skipai").onclick=skipAI;
 (function init(){
-  var sv=String(read("tka:eng","claude"));sv=sv==="bank"||sv==="sample"?"bank":"claude";
+  // Claude is the default once its relay is connected; a teacher's own choice in Advanced always wins.
+  var co=$("eng").querySelector("option[value=claude]");if(!relayUrl()){co.disabled=true;co.textContent="Claude AI: not connected to this site yet";}
+  var sv=read("tka:engpick",null);if(sv==null)sv=relayUrl()?"claude":read("tka:eng","cpu");
+  sv=sv==="browser"?"cpu":sv==="sample"?"bank":sv;if(["claude","cpu","gpu","bank"].indexOf(sv)<0)sv="cpu";if(sv==="claude"&&!relayUrl())sv="cpu";
   $("eng").value=sv;
+  var cm=String(read("tka:cm","auto"));$("cm").value=(cm==="auto"||CM[cm])?cm:"auto";
   var pv=String(read("tka:pol","wk"));pv=pv==="999"?"month":pv;$("pol").value=["wk","next","month"].indexOf(pv)>=0?pv:"wk";
-  V.wk=defWeek(V.m);refresh();render();scanAll();
-  window.addEventListener("online",refresh);window.addEventListener("offline",refresh);})();
+  $("auto").checked=read("tka:auto",true)!==false;
+  V.wk=defWeek(V.m);refresh();detectGpu();render();scanAll();
+  window.addEventListener("online",refresh);window.addEventListener("offline",refresh);
+  setTimeout(autoLoad,1500);})();
