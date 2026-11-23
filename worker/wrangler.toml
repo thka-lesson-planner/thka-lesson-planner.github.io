@@ -1,0 +1,15 @@
+# Cloudflare Worker that lets the planner use Claude without exposing the API key.
+# The key is NOT in this file. Add it once with:  npx wrangler secret put ANTHROPIC_API_KEY
+name = "thka-planner-ai"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+# Web addresses allowed to use this relay (comma-separated, no trailing slash).
+ALLOWED_ORIGINS = "https://thka-lesson-planner.github.io"
+
+# At most 20 AI requests per minute from one visitor.
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }
